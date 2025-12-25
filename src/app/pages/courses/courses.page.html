@@ -1,0 +1,20 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-title>Courses</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  <ion-list>
+    <ion-item *ngFor="let course of courses" [routerLink]="['/course-detail', course.id]">
+      <ion-thumbnail slot="start">
+        <img [src]="course.cover">
+      </ion-thumbnail>
+      <ion-label>
+        <h2>{{ course.title }}</h2>
+        <p>{{ course.author }}</p>
+        <p>{{ course.price | currency }}</p>
+      </ion-label>
+    </ion-item>
+  </ion-list>
+</ion-content>

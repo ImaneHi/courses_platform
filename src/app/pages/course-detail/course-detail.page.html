@@ -1,0 +1,25 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="/courses"></ion-back-button>
+    </ion-buttons>
+    <ion-title>{{ course?.title }}</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  <div *ngIf="course">
+    <img [src]="course.cover">
+    <ion-card-header>
+      <ion-card-title>{{ course.title }}</ion-card-title>
+      <ion-card-subtitle>{{ course.author }}</ion-card-subtitle>
+    </ion-card-header>
+    <ion-card-content>
+      <p>{{ course.description }}</p>
+      <p>{{ course.price | currency }}</p>
+      <ion-button expand="full" (click)="enroll()" [disabled]="course.enrolled">
+        {{ course.enrolled ? 'Enrolled' : 'Enroll' }}
+      </ion-button>
+    </ion-card-content>
+  </div>
+</ion-content>

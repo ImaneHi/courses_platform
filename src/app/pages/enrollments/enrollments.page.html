@@ -1,0 +1,25 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="/dashboard"></ion-back-button>
+    </ion-buttons>
+    <ion-title>My Enrollments</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  <ion-list>
+    <ion-item *ngFor="let course of enrolledCourses" [routerLink]="['/course-detail', course.id]">
+      <ion-thumbnail slot="start">
+        <img [src]="course.cover">
+      </ion-thumbnail>
+      <ion-label>
+        <h2>{{ course.title }}</h2>
+        <p>{{ course.author }}</p>
+      </ion-label>
+    </ion-item>
+    <ion-item *ngIf="enrolledCourses.length === 0">
+      <ion-label>No enrolled courses yet.</ion-label>
+    </ion-item>
+  </ion-list>
+</ion-content>

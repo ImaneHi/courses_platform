@@ -1,0 +1,16 @@
+ion-content {
+  --background: var(--ion-color-light);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+
+  form {
+    width: 80%;
+    max-width: 500px;
+    background: #fff;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  }
+}
