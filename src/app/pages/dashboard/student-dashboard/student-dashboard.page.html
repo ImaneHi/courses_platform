@@ -3,19 +3,19 @@
     <ion-buttons slot="start">
       <ion-menu-button></ion-menu-button>
     </ion-buttons>
-    <ion-title>All Courses</ion-title>
+    <ion-title>Student Dashboard</ion-title>
   </ion-toolbar>
 </ion-header>
 
 <ion-content [fullscreen]="true" class="ion-padding">
-  <ion-searchbar debounce="500" (ionInput)="onSearchChange($event)" placeholder="Search courses"></ion-searchbar>
+  <h2>My Enrolled Courses</h2>
 
-  <div *ngIf="courses.length === 0">
-    <p>No courses found.</p>
+  <div *ngIf="enrolledCourses.length === 0">
+    <p>You are not currently enrolled in any courses. Explore <a routerLink="/courses">all courses</a> to find one!</p>
   </div>
 
-  <ion-list *ngIf="courses.length > 0">
-    <ion-item *ngFor="let course of courses" [routerLink]="['/course-detail', course.id]" detail>
+  <ion-list *ngIf="enrolledCourses.length > 0">
+    <ion-item *ngFor="let course of enrolledCourses" (click)="viewCourse(course.id)" detail>
       <ion-thumbnail slot="start">
         <img [src]="course.cover" alt="Course Cover">
       </ion-thumbnail>
@@ -23,7 +23,6 @@
         <h2>{{ course.title }}</h2>
         <p>{{ course.author }} - {{ course.category }}</p>
         <p>Rating: {{ course.rating }}</p>
-        <p>Price: ${{ course.price }}</p>
       </ion-label>
     </ion-item>
   </ion-list>

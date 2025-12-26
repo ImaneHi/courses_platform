@@ -5,6 +5,8 @@ import { IonicModule } from '@ionic/angular';
 import { Course } from '../../services/course.model';
 import { CourseService } from '../../services/course.service';
 import { RouterLink } from '@angular/router';
+import { Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
 
 @Component({
   selector: 'app-enrollments',
@@ -19,6 +21,10 @@ export class EnrollmentsPage implements OnInit {
   constructor(private courseService: CourseService) { }
 
   ngOnInit() {
-    this.enrolledCourses = this.courseService.getCourses().filter(course => course.enrolled);
+    this.courseService.getCourses().pipe(
+      map(courses => courses.filter(course => course.enrolled))
+    ).subscribe(enrolledCourses => {
+      this.enrolledCourses = enrolledCourses;
+    });
   }
 }

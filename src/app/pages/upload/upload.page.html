@@ -1,27 +1,37 @@
-<ion-header>
+<ion-header [translucent]="true">
   <ion-toolbar>
-    <ion-title>Upload Course</ion-title>
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="/teacher-dashboard"></ion-back-button>
+    </ion-buttons>
+    <ion-title>Upload New Course</ion-title>
   </ion-toolbar>
 </ion-header>
 
-<ion-content>
+<ion-content [fullscreen]="true" class="ion-padding">
   <form [formGroup]="uploadForm" (ngSubmit)="uploadCourse()">
     <ion-item>
-      <ion-label position="floating">Title</ion-label>
-      <ion-input formControlName="title"></ion-input>
+      <ion-input label="Title" labelPlacement="floating" formControlName="title"></ion-input>
     </ion-item>
     <ion-item>
-      <ion-label position="floating">Description</ion-label>
-      <ion-textarea formControlName="description"></ion-textarea>
+      <ion-textarea label="Description" labelPlacement="floating" formControlName="description" autoGrow="true"></ion-textarea>
     </ion-item>
     <ion-item>
-      <ion-label position="floating">Author</ion-label>
-      <ion-input formControlName="author"></ion-input>
+      <ion-input label="Price" labelPlacement="floating" type="number" formControlName="price"></ion-input>
     </ion-item>
     <ion-item>
-      <ion-label position="floating">Price</ion-label>
-      <ion-input type="number" formControlName="price"></ion-input>
+      <ion-select label="Category" labelPlacement="floating" formControlName="category" placeholder="Select Category">
+        <ion-select-option value="Web Development">Web Development</ion-select-option>
+        <ion-select-option value="Mobile Development">Mobile Development</ion-select-option>
+        <ion-select-option value="Data Science">Data Science</ion-select-option>
+        <ion-select-option value="Programming">Programming</ion-select-option>
+        <ion-select-option value="Design">Design</ion-select-option>
+      </ion-select>
     </ion-item>
-    <ion-button expand="full" type="submit" [disabled]="!uploadForm.valid">Upload</ion-button>
+    <!-- Hidden input for cover image, using default for now -->
+    <ion-input type="hidden" formControlName="cover"></ion-input>
+
+    <ion-button expand="full" type="submit" [disabled]="!uploadForm.valid" class="ion-margin-top">
+      Upload Course
+    </ion-button>
   </form>
 </ion-content>

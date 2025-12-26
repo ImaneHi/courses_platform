@@ -1,4 +1,4 @@
-<ion-header>
+<ion-header [translucent]="true">
   <ion-toolbar>
     <ion-buttons slot="start">
       <ion-back-button defaultHref="/courses"></ion-back-button>
@@ -7,19 +7,46 @@
   </ion-toolbar>
 </ion-header>
 
-<ion-content>
+<ion-content [fullscreen]="true" class="ion-padding">
   <div *ngIf="course">
-    <img [src]="course.cover">
-    <ion-card-header>
-      <ion-card-title>{{ course.title }}</ion-card-title>
-      <ion-card-subtitle>{{ course.author }}</ion-card-subtitle>
-    </ion-card-header>
-    <ion-card-content>
-      <p>{{ course.description }}</p>
-      <p>{{ course.price | currency }}</p>
-      <ion-button expand="full" (click)="enroll()" [disabled]="course.enrolled">
-        {{ course.enrolled ? 'Enrolled' : 'Enroll' }}
-      </ion-button>
-    </ion-card-content>
+    <ion-card>
+      <img [src]="course.cover" alt="Course Cover">
+      <ion-card-header>
+        <ion-card-title>{{ course.title }}</ion-card-title>
+        <ion-card-subtitle>{{ course.author }} | {{ course.category }}</ion-card-subtitle>
+      </ion-card-header>
+      <ion-card-content>
+        <p>{{ course.description }}</p>
+        <p><strong>Price:</strong> ${{ course.price }}</p>
+        <p><strong>Rating:</strong> {{ course.rating }}</p>
+        <ion-button expand="block" (click)="enroll()" *ngIf="isStudent && !course.enrolled">Enroll Now</ion-button>
+        <ion-button expand="block" color="success" *ngIf="isStudent && course.enrolled" disabled>Enrolled</ion-button>
+      </ion-card-content>
+    </ion-card>
+
+    <ion-list *ngIf="course.modules && course.modules.length > 0">
+      <ion-list-header>
+        <ion-label>Course Content</ion-label>
+      </ion-list-header>
+
+      <ion-item *ngFor="let module of course.modules">
+        <ion-label>
+          <h2>{{ module.title }}</h2>
+        </ion-label>
+        <ion-list *ngIf="module.lessons && module.lessons.length > 0">
+          <ion-item *ngFor="let lesson of module.lessons">
+            <ion-label>
+              <h3>{{ lesson.title }}</h3>
+              <p>Type: {{ lesson.type }} <span *ngIf="lesson.duration"> | Duration: {{ lesson.duration }} min</span></p>
+              <p>{{ lesson.content }}</p>
+            </ion-label>
+          </ion-item>
+        </ion-list>
+      </ion-item>
+    </ion-list>
+  </div>
+
+  <div *ngIf="!course">
+    <p>Course not found.</p>
   </div>
 </ion-content>

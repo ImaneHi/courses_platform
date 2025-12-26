@@ -5,6 +5,8 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { IonicModule } from '@ionic/angular';
 import { RouterLink } from '@angular/router';
+import { Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
 
 @Component({
   selector: 'app-dashboard',
@@ -21,9 +23,11 @@ export class DashboardPage implements OnInit {
   constructor(private courseService: CourseService) { }
 
   ngOnInit() {
-    this.allCourses = this.courseService.getCourses();
-    this.filteredCourses = this.allCourses;
-    this.enrolledCourses = this.allCourses.filter(course => course.enrolled);
+    this.courseService.getCourses().subscribe(courses => {
+      this.allCourses = courses;
+      this.filteredCourses = this.allCourses;
+      this.enrolledCourses = this.allCourses.filter(course => course.enrolled);
+    });
   }
 
   search(event: any) {

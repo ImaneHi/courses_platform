@@ -1,20 +1,61 @@
 <ion-header [translucent]="true">
   <ion-toolbar>
-    <ion-title>
-      Blank
-    </ion-title>
+    <ion-buttons slot="start">
+      <ion-menu-button></ion-menu-button>
+    </ion-buttons>
+    <ion-title>Home</ion-title>
   </ion-toolbar>
 </ion-header>
 
-<ion-content [fullscreen]="true">
-  <ion-header collapse="condense">
-    <ion-toolbar>
-      <ion-title size="large">Blank</ion-title>
-    </ion-toolbar>
-  </ion-header>
+<ion-content [fullscreen]="true" class="ion-padding">
+  <div *ngIf="currentUser">
+    <h1>Welcome, {{ currentUser.firstName }} {{ currentUser.lastName }}!</h1>
+    <p>You are logged in as a <strong>{{ currentUser.role }}</strong>.</p>
 
-  <div id="container">
-    <strong>Ready to create an app?</strong>
-    <p>Start with Ionic <a target="_blank" rel="noopener noreferrer" href="https://ionicframework.com/docs/components">UI Components</a></p>
+    <ion-grid>
+      <ion-row>
+        <ion-col size="12">
+          <ion-button expand="full" routerLink="/courses" routerDirection="forward">
+            <ion-icon slot="start" name="book-outline"></ion-icon>
+            View All Courses
+          </ion-button>
+        </ion-col>
+      </ion-row>
+
+      <ion-row *ngIf="isStudent()">
+        <ion-col size="12">
+          <ion-button expand="full" routerLink="/student-dashboard" routerDirection="forward" color="primary">
+            <ion-icon slot="start" name="person-outline"></ion-icon>
+            Go to Student Dashboard
+          </ion-button>
+        </ion-col>
+      </ion-row>
+
+      <ion-row *ngIf="isTeacher()">
+        <ion-col size="12">
+          <ion-button expand="full" routerLink="/teacher-dashboard" routerDirection="forward" color="secondary">
+            <ion-icon slot="start" name="school-outline"></ion-icon>
+            Go to Teacher Dashboard
+          </ion-button>
+        </ion-col>
+      </ion-row>
+
+      <ion-row *ngIf="isTeacher()">
+        <ion-col size="12">
+          <ion-button expand="full" routerLink="/upload" routerDirection="forward" color="tertiary">
+            <ion-icon slot="start" name="cloud-upload-outline"></ion-icon>
+            Upload New Course
+          </ion-button>
+        </ion-col>
+      </ion-row>
+    </ion-grid>
+  </div>
+
+  <div *ngIf="!currentUser">
+    <h1>Welcome!</h1>
+    <p>Please log in to access the platform features.</p>
+    <ion-button expand="full" routerLink="/login" routerDirection="forward">
+      Go to Login
+    </ion-button>
   </div>
 </ion-content>
