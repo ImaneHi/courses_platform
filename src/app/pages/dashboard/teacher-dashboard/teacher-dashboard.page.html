@@ -13,15 +13,44 @@
 </ion-header>
 
 <ion-content [fullscreen]="true" class="ion-padding">
+  <!-- Courses Section -->
+  <div *ngIf="!selectedCourseId">
+    <h2>My Courses</h2>
+
+    <div *ngIf="teacherCourses.length === 0">
+      <p>You haven't created any courses yet. Click the '+' button above to create one!</p>
+    </div>
+
+    <ion-list *ngIf="teacherCourses.length > 0">
+      <ion-item *ngFor="let course of teacherCourses">
+        <ion-label>
+          <h3>{{ course.title }}</h3>
+          <p>{{ course.description }}</p>
+          <p *ngIf="course.enrolled" class="enrolled-text">
+            <ion-icon name="people-outline"></ion-icon>
+            Students enrolled
+          </p>
+        </ion-label>
+        <ion-buttons slot="end">
+          <ion-button (click)="viewCourse(course.id)" fill="clear">View</ion-button>
+          <ion-button (click)="viewStudentProgress(course.id)" fill="clear">View Progress</ion-button>
+          <ion-button color="danger" (click)="deleteCourse(course.id)">
+            <ion-icon slot="icon-only" name="trash-outline"></ion-icon>
+          </ion-button>
+        </ion-buttons>
+      </ion-item>
+    </ion-list>
+  </div>
+
   <!-- Student Progress Section -->
   <div *ngIf="selectedCourseId">
     <ion-button fill="clear" (click)="selectedCourseId = null; studentProgress = [];">
       <ion-icon name="arrow-back-outline" slot="start"></ion-icon>
       Back to Courses
     </ion-button>
-    
+
     <h2>Student Progress</h2>
-    
+
     <!-- Progress Summary -->
     <ion-card>
       <ion-card-header>
@@ -59,6 +88,21 @@
       <p>Loading student progress...</p>
     </div>
 
+    <ion-card *ngIf="!isLoadingProgress">
+      <ion-card-content>
+        <canvas #studentsCanvas></canvas>
+      </ion-card-content>
+    </ion-card>
+
+    <ion-card *ngIf="!isLoadingProgress">
+      <ion-card-header>
+        <ion-card-title>Distribution</ion-card-title>
+      </ion-card-header>
+      <ion-card-content>
+        <canvas #distributionCanvas></canvas>
+      </ion-card-content>
+    </ion-card>
+
     <!-- Student List -->
     <ion-list *ngIf="!isLoadingProgress && studentProgress.length > 0">
       <ion-item *ngFor="let progress of studentProgress">
@@ -83,40 +127,3 @@
       <p>No students enrolled in this course yet.</p>
     </div>
   </div>
-
-  <!-- Courses Section -->
-  <div *ngIf="!selectedCourseId">
-    <h2>My Courses</h2>
-
-    <div *ngIf="teacherCourses.length === 0">
-      <p>You haven't created any courses yet. Click the '+' button above to create one!</p>
-    </div>
-
-    <ion-list *ngIf="teacherCourses.length > 0">
-      <ion-item *ngFor="let course of teacherCourses">
-        <ion-label>
-          <h3>{{ course.title }}</h3>
-          <p>{{ course.description }}</p>
-          <p *ngIf="course.enrolled" class="enrolled-text">
-            <ion-icon name="people-outline"></ion-icon>
-            Students enrolled
-          </p>
-        </ion-label>
-        <ion-buttons slot="end">
-          <ion-button (click)="viewStudentProgress(course.id)" color="primary">
-            <ion-icon slot="icon-only" name="analytics-outline"></ion-icon>
-          </ion-button>
-          <ion-button (click)="viewCourse(course.id)">
-            <ion-icon slot="icon-only" name="eye-outline"></ion-icon>
-          </ion-button>
-          <ion-button (click)="editCourse(course.id)">
-            <ion-icon slot="icon-only" name="create-outline"></ion-icon>
-          </ion-button>
-          <ion-button color="danger" (click)="deleteCourse(course.id)">
-            <ion-icon slot="icon-only" name="trash-outline"></ion-icon>
-          </ion-button>
-        </ion-buttons>
-      </ion-item>
-    </ion-list>
-  </div>
-</ion-content>
