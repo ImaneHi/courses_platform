@@ -3,7 +3,8 @@ import { IonicModule, ToastController } from '@ionic/angular';
 import { CommonModule } from '@angular/common';
 import { CourseService } from 'src/app/services/course.service';
 import { AuthService } from 'src/app/services/auth.service';
-import { Course } from 'src/app/services/course.model';
+import { ProgressService } from 'src/app/services/progress.service';
+import { Course, StudentProgress } from 'src/app/services/course.model';
 import { Router } from '@angular/router';
 import { RouterModule } from '@angular/router';
 
@@ -17,10 +18,14 @@ import { RouterModule } from '@angular/router';
 export class TeacherDashboardPage implements OnInit {
   teacherCourses: Course[] = [];
   currentTeacherId: number | undefined;
+  studentProgress: StudentProgress[] = [];
+  selectedCourseId: number | null = null;
+  isLoadingProgress: boolean = false;
 
   constructor(
     private courseService: CourseService,
     private authService: AuthService,
+    private progressService: ProgressService,
     private router: Router,
     private toastController: ToastController
   ) { }
@@ -71,5 +76,40 @@ export class TeacherDashboardPage implements OnInit {
 
   navigateToUpload() {
     this.router.navigate(['/upload']);
+  }
+
+  viewStudentProgress(courseId: number) {
+    this.selectedCourseId = courseId;
+    this.isLoadingProgress = true;
+    this.progressService.getCourseProgress(courseId).subscribe(progress => {
+      this.studentProgress = progress;
+      this.isLoadingProgress = false;
+    });
+  }
+
+  getProgressColor(progress: number): string {
+    if (progress >= 80) return 'success';
+    if (progress >= 50) return 'warning';
+    return 'danger';
+  }
+
+  getProgressStatus(progress: number): string {
+    if (progress >= 100) return 'Completed';
+    if (progress >= 50) return 'In Progress';
+    return 'Just Started';
+  }
+
+  getAverageProgress(): number {
+    if (this.studentProgress.length === 0) return 0;
+    const total = this.studentProgress.reduce((sum, p) => sum + p.overallProgress, 0);
+    return Math.round(total / this.studentProgress.length);
+  }
+
+  getCompletedCount(): number {
+    return this.studentProgress.filter(p => p.courseCompleted).length;
+  }
+
+  getEnrolledCount(): number {
+    return this.studentProgress.length;
   }
 }

@@ -9,6 +9,23 @@
 
 <ion-content [fullscreen]="true" class="ion-padding">
   <div *ngIf="course">
+    <ion-card *ngIf="selectedLesson">
+      <ion-card-header>
+        <ion-card-title>{{ selectedLesson.title }}</ion-card-title>
+      </ion-card-header>
+      <ion-card-content>
+        <div *ngIf="selectedLesson.type === 'video' && videoUrlSafe">
+          <iframe [src]="videoUrlSafe" width="100%" height="315" frameborder="0" allowfullscreen></iframe>
+        </div>
+        <div *ngIf="selectedLesson.type === 'text'">
+          <div [innerHTML]="selectedLesson.content"></div>
+        </div>
+        <div *ngIf="selectedLesson.type === 'document'">
+          <p>Document opened in a new tab/window.</p>
+        </div>
+        <ion-button expand="block" (click)="closeLesson()">Close</ion-button>
+      </ion-card-content>
+    </ion-card>
     <ion-card>
       <img [src]="course.cover" alt="Course Cover">
       <ion-card-header>
@@ -38,12 +55,32 @@
             <ion-label>
               <h3>{{ lesson.title }}</h3>
               <p>Type: {{ lesson.type }} <span *ngIf="lesson.duration"> | Duration: {{ lesson.duration }} min</span></p>
-              <p>{{ lesson.content }}</p>
             </ion-label>
+            <ion-buttons slot="end">
+              <ion-button fill="clear" color="primary" (click)="openLesson(lesson)">Open</ion-button>
+              <ion-button *ngIf="course.enrolled" fill="clear" color="success" (click)="markLessonCompleted(lesson.id)" [disabled]="isLessonCompleted(lesson.id)">
+                <span *ngIf="!isLessonCompleted(lesson.id)">Mark Complete</span>
+                <span *ngIf="isLessonCompleted(lesson.id)">Completed</span>
+              </ion-button>
+            </ion-buttons>
           </ion-item>
         </ion-list>
+
+        <ion-item lines="none" *ngIf="course.enrolled && module.quiz">
+          <ion-label>
+            <strong>Module Quiz:</strong> {{ module.quiz.title }}
+          </ion-label>
+          <ion-button slot="end" (click)="takeQuiz(module.quiz.id)" color="tertiary">Take Quiz</ion-button>
+        </ion-item>
       </ion-item>
     </ion-list>
+
+    <ion-item *ngIf="course.enrolled && course.finalQuiz">
+      <ion-label>
+        <strong>Final Quiz:</strong> {{ course.finalQuiz.title }}
+      </ion-label>
+      <ion-button slot="end" color="danger" (click)="takeQuiz(course.finalQuiz.id)">Take Final Quiz</ion-button>
+    </ion-item>
   </div>
 
   <div *ngIf="!course">

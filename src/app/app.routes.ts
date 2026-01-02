@@ -56,5 +56,10 @@ export const routes: Routes = [
     canActivate: [AuthGuard, RoleGuard],
     data: { role: 'student' }
   },
+  {
+    path: 'quiz/:quizId',
+    loadComponent: () => import('./pages/quiz/quiz.page').then( m => m.QuizPage),
+    canActivate: [AuthGuard] // Only authenticated users can take quizzes
+  },
 ];
 

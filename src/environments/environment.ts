@@ -14,3 +14,8 @@ export const environment = {
  * on performance if an error is thrown.
  */
 // import 'zone.js/plugins/zone-error';  // Included with Angular CLI.
+
+// Optional API URL for backend integration. Leave empty to use in-memory/mock services.
+export const apiConfig = {
+  apiUrl: ''
+};

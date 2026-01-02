@@ -1,6 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { IonHeader, IonToolbar, IonTitle, IonContent } from '@ionic/angular/standalone';
+import { IonApp, IonHeader, IonToolbar, IonTitle, IonContent, IonLabel, IonRouterOutlet, IonIcon, IonMenuToggle, IonItem, IonMenu, IonList } from '@ionic/angular/standalone';
 import { AuthService } from './services/auth.service';
 import { Subscription } from 'rxjs';
 import { User } from './services/user.model';
@@ -10,7 +10,7 @@ import { Router, RouterLink } from '@angular/router';
   selector: 'app-root',
   templateUrl: 'app.component.html',
   standalone: true,
-  imports: [CommonModule, IonHeader, IonToolbar, IonTitle, IonContent, RouterLink],
+  imports: [CommonModule, IonApp, IonHeader, IonToolbar, IonTitle, IonContent, IonLabel, IonRouterOutlet, IonIcon, IonMenuToggle, IonItem, IonMenu, IonList, RouterLink],
 })
 export class AppComponent implements OnInit {
   private userSubscription: Subscription | undefined;

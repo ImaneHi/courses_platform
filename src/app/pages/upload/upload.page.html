@@ -9,29 +9,110 @@
 
 <ion-content [fullscreen]="true" class="ion-padding">
   <form [formGroup]="uploadForm" (ngSubmit)="uploadCourse()">
-    <ion-item>
-      <ion-input label="Title" labelPlacement="floating" formControlName="title"></ion-input>
-    </ion-item>
-    <ion-item>
-      <ion-textarea label="Description" labelPlacement="floating" formControlName="description" autoGrow="true"></ion-textarea>
-    </ion-item>
-    <ion-item>
-      <ion-input label="Price" labelPlacement="floating" type="number" formControlName="price"></ion-input>
-    </ion-item>
-    <ion-item>
-      <ion-select label="Category" labelPlacement="floating" formControlName="category" placeholder="Select Category">
-        <ion-select-option value="Web Development">Web Development</ion-select-option>
-        <ion-select-option value="Mobile Development">Mobile Development</ion-select-option>
-        <ion-select-option value="Data Science">Data Science</ion-select-option>
-        <ion-select-option value="Programming">Programming</ion-select-option>
-        <ion-select-option value="Design">Design</ion-select-option>
-      </ion-select>
-    </ion-item>
-    <!-- Hidden input for cover image, using default for now -->
-    <ion-input type="hidden" formControlName="cover"></ion-input>
+    <!-- Course Information -->
+    <ion-card>
+      <ion-card-header>
+        <ion-card-title>Course Information</ion-card-title>
+      </ion-card-header>
+      <ion-card-content>
+        <ion-item>
+          <ion-input label="Title" labelPlacement="floating" formControlName="title"></ion-input>
+        </ion-item>
+        <ion-item>
+          <ion-textarea label="Description" labelPlacement="floating" formControlName="description" autoGrow="true"></ion-textarea>
+        </ion-item>
+        <ion-item>
+          <ion-input label="Price" labelPlacement="floating" type="number" formControlName="price"></ion-input>
+        </ion-item>
+        <ion-item>
+          <ion-select label="Category" labelPlacement="floating" formControlName="category" placeholder="Select Category">
+            <ion-select-option value="Web Development">Web Development</ion-select-option>
+            <ion-select-option value="Mobile Development">Mobile Development</ion-select-option>
+            <ion-select-option value="Data Science">Data Science</ion-select-option>
+            <ion-select-option value="Programming">Programming</ion-select-option>
+            <ion-select-option value="Design">Design</ion-select-option>
+          </ion-select>
+        </ion-item>
+        <!-- Hidden input for cover image, using default for now -->
+        <ion-input type="hidden" formControlName="cover"></ion-input>
+      </ion-card-content>
+    </ion-card>
 
-    <ion-button expand="full" type="submit" [disabled]="!uploadForm.valid" class="ion-margin-top">
-      Upload Course
+    <!-- Document Upload Section -->
+    <ion-card>
+      <ion-card-header>
+        <ion-card-title>Course Documents</ion-card-title>
+        <ion-card-subtitle>Upload PDF, Word, PowerPoint, Images, Videos, or Text files (max 10MB each)</ion-card-subtitle>
+      </ion-card-header>
+      <ion-card-content>
+        <!-- File Selection Button -->
+        <ion-button expand="full" fill="outline" (click)="selectFiles()" [disabled]="isUploading">
+          <ion-icon name="folder-open-outline" slot="start"></ion-icon>
+          Select Files
+        </ion-button>
+
+        <!-- Selected Files (Not Yet Uploaded) -->
+        <div *ngIf="selectedFiles.length > 0" class="selected-files">
+          <h4>Files to Upload:</h4>
+          <ion-list>
+            <ion-item *ngFor="let file of selectedFiles; let i = index">
+              <ion-icon [name]="getFileIcon(file.type)" slot="start"></ion-icon>
+              <ion-label>
+                <h3>{{ file.name }}</h3>
+                <p>{{ formatFileSize(file.size) }}</p>
+              </ion-label>
+              <ion-button slot="end" fill="clear" color="danger" (click)="removeSelectedFile(i)">
+                <ion-icon name="remove-circle-outline"></ion-icon>
+              </ion-button>
+            </ion-item>
+          </ion-list>
+          
+          <ion-button expand="full" color="primary" (click)="uploadSelectedFiles()" [disabled]="isUploading">
+            <ion-icon name="cloud-upload-outline" slot="start"></ion-icon>
+            Upload {{ selectedFiles.length }} File(s)
+          </ion-button>
+        </div>
+
+        <!-- Upload Progress -->
+        <div *ngIf="isUploading" class="upload-progress">
+          <ion-progress-bar [value]="uploadProgress / 100" color="primary"></ion-progress-bar>
+          <p class="progress-text">Uploading... {{ uploadProgress }}%</p>
+        </div>
+
+        <!-- Uploaded Files -->
+        <div *ngIf="uploadedFiles.length > 0" class="uploaded-files">
+          <h4>Uploaded Documents:</h4>
+          <ion-list>
+            <ion-item *ngFor="let file of uploadedFiles">
+              <ion-icon [name]="getFileIcon(file.type)" slot="start"></ion-icon>
+              <ion-label>
+                <h3>{{ file.name }}</h3>
+                <p>{{ formatFileSize(file.size) }} • Uploaded {{ file.uploadedAt | date:'short' }}</p>
+              </ion-label>
+              <ion-button slot="end" fill="clear" color="danger" (click)="removeUploadedFile(file.id)">
+                <ion-icon name="trash-outline"></ion-icon>
+              </ion-button>
+            </ion-item>
+          </ion-list>
+        </div>
+
+        <!-- Empty State -->
+        <div *ngIf="selectedFiles.length === 0 && uploadedFiles.length === 0 && !isUploading" class="empty-state">
+          <ion-icon name="folder-outline" size="large" color="medium"></ion-icon>
+          <p>No documents selected yet</p>
+          <p color="medium">Click "Select Files" to add course materials</p>
+        </div>
+      </ion-card-content>
+    </ion-card>
+
+    <!-- Submit Button -->
+    <ion-button 
+      expand="full" 
+      type="submit" 
+      [disabled]="!uploadForm.valid || uploadedFiles.length === 0 || isUploading" 
+      class="ion-margin-top">
+      <ion-icon name="checkmark-circle-outline" slot="start"></ion-icon>
+      Create Course with {{ uploadedFiles.length }} Document(s)
     </ion-button>
   </form>
 </ion-content>

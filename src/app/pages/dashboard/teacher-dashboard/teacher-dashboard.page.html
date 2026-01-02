@@ -13,29 +13,110 @@
 </ion-header>
 
 <ion-content [fullscreen]="true" class="ion-padding">
-  <h2>My Courses</h2>
+  <!-- Student Progress Section -->
+  <div *ngIf="selectedCourseId">
+    <ion-button fill="clear" (click)="selectedCourseId = null; studentProgress = [];">
+      <ion-icon name="arrow-back-outline" slot="start"></ion-icon>
+      Back to Courses
+    </ion-button>
+    
+    <h2>Student Progress</h2>
+    
+    <!-- Progress Summary -->
+    <ion-card>
+      <ion-card-header>
+        <ion-card-title>Course Overview</ion-card-title>
+      </ion-card-header>
+      <ion-card-content>
+        <ion-grid>
+          <ion-row>
+            <ion-col size="4">
+              <div class="stat-item">
+                <h3>{{ getEnrolledCount() }}</h3>
+                <p>Enrolled</p>
+              </div>
+            </ion-col>
+            <ion-col size="4">
+              <div class="stat-item">
+                <h3>{{ getCompletedCount() }}</h3>
+                <p>Completed</p>
+              </div>
+            </ion-col>
+            <ion-col size="4">
+              <div class="stat-item">
+                <h3>{{ getAverageProgress() }}%</h3>
+                <p>Avg Progress</p>
+              </div>
+            </ion-col>
+          </ion-row>
+        </ion-grid>
+      </ion-card-content>
+    </ion-card>
 
-  <div *ngIf="teacherCourses.length === 0">
-    <p>You haven't created any courses yet. Click the '+' button above to create one!</p>
+    <!-- Loading State -->
+    <div *ngIf="isLoadingProgress" class="loading-container">
+      <ion-spinner></ion-spinner>
+      <p>Loading student progress...</p>
+    </div>
+
+    <!-- Student List -->
+    <ion-list *ngIf="!isLoadingProgress && studentProgress.length > 0">
+      <ion-item *ngFor="let progress of studentProgress">
+        <ion-avatar slot="start">
+          <ion-img src="assets/icon/favicon.png"></ion-img>
+        </ion-avatar>
+        <ion-label>
+          <h3>Student {{ progress.studentId }}</h3>
+          <p>Progress: {{ progress.overallProgress }}%</p>
+          <p>Status: {{ getProgressStatus(progress.overallProgress) }}</p>
+        </ion-label>
+        <ion-progress-bar 
+          slot="end" 
+          [value]="progress.overallProgress" 
+          [color]="getProgressColor(progress.overallProgress)"
+          style="width: 100px;">
+        </ion-progress-bar>
+      </ion-item>
+    </ion-list>
+
+    <div *ngIf="!isLoadingProgress && studentProgress.length === 0">
+      <p>No students enrolled in this course yet.</p>
+    </div>
   </div>
 
-  <ion-list *ngIf="teacherCourses.length > 0">
-    <ion-item *ngFor="let course of teacherCourses">
-      <ion-label>
-        <h3>{{ course.title }}</h3>
-        <p>{{ course.description }}</p>
-      </ion-label>
-      <ion-buttons slot="end">
-        <ion-button (click)="viewCourse(course.id)">
-          <ion-icon slot="icon-only" name="eye-outline"></ion-icon>
-        </ion-button>
-        <ion-button (click)="editCourse(course.id)">
-          <ion-icon slot="icon-only" name="create-outline"></ion-icon>
-        </ion-button>
-        <ion-button color="danger" (click)="deleteCourse(course.id)">
-          <ion-icon slot="icon-only" name="trash-outline"></ion-icon>
-        </ion-button>
-      </ion-buttons>
-    </ion-item>
-  </ion-list>
+  <!-- Courses Section -->
+  <div *ngIf="!selectedCourseId">
+    <h2>My Courses</h2>
+
+    <div *ngIf="teacherCourses.length === 0">
+      <p>You haven't created any courses yet. Click the '+' button above to create one!</p>
+    </div>
+
+    <ion-list *ngIf="teacherCourses.length > 0">
+      <ion-item *ngFor="let course of teacherCourses">
+        <ion-label>
+          <h3>{{ course.title }}</h3>
+          <p>{{ course.description }}</p>
+          <p *ngIf="course.enrolled" class="enrolled-text">
+            <ion-icon name="people-outline"></ion-icon>
+            Students enrolled
+          </p>
+        </ion-label>
+        <ion-buttons slot="end">
+          <ion-button (click)="viewStudentProgress(course.id)" color="primary">
+            <ion-icon slot="icon-only" name="analytics-outline"></ion-icon>
+          </ion-button>
+          <ion-button (click)="viewCourse(course.id)">
+            <ion-icon slot="icon-only" name="eye-outline"></ion-icon>
+          </ion-button>
+          <ion-button (click)="editCourse(course.id)">
+            <ion-icon slot="icon-only" name="create-outline"></ion-icon>
+          </ion-button>
+          <ion-button color="danger" (click)="deleteCourse(course.id)">
+            <ion-icon slot="icon-only" name="trash-outline"></ion-icon>
+          </ion-button>
+        </ion-buttons>
+      </ion-item>
+    </ion-list>
+  </div>
 </ion-content>
