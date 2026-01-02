@@ -5,6 +5,7 @@ import { AuthService } from './services/auth.service';
 import { Subscription } from 'rxjs';
 import { User } from './services/user.model';
 import { Router, RouterLink } from '@angular/router';
+import { PushNotificationsService } from './services/push-notifications.service';
 
 @Component({
   selector: 'app-root',
@@ -16,9 +17,14 @@ export class AppComponent implements OnInit {
   private userSubscription: Subscription | undefined;
   currentUser: User | null = null;
 
-  constructor(private authService: AuthService, private router: Router) {}
+  constructor(
+    private authService: AuthService,
+    private router: Router,
+    private pushNotificationsService: PushNotificationsService
+  ) {}
 
   ngOnInit() {
+    void this.pushNotificationsService.init();
     this.userSubscription = this.authService.currentUser.subscribe(user => {
       this.currentUser = user;
     });
