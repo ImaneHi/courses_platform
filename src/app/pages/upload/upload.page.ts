@@ -1,200 +1,233 @@
 import { Component, OnInit } from '@angular/core';
-import { FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { CommonModule } from '@angular/common';
+import {
+  FormBuilder,
+  FormGroup,
+  Validators,
+  ReactiveFormsModule
+} from '@angular/forms';
+import { IonicModule, ToastController, LoadingController } from '@ionic/angular';
+import { Router } from '@angular/router';
+
 import { CourseService } from '../../services/course.service';
 import { FileUploadService, UploadedFile } from '../../services/file-upload.service';
-import { CommonModule } from '@angular/common';
-import { FormsModule, ReactiveFormsModule } from '@angular/forms';
-import { IonicModule, ToastController, AlertController } from '@ionic/angular';
-import { Router } from '@angular/router';
-import { AuthService } from '../../services/auth.service';
-import { Course } from '../../services/course.model';
 
 @Component({
   selector: 'app-upload',
+  standalone: true,
+  imports: [CommonModule, IonicModule, ReactiveFormsModule],
   templateUrl: './upload.page.html',
   styleUrls: ['./upload.page.scss'],
-  standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule, IonicModule]
 })
 export class UploadPage implements OnInit {
-  uploadForm: FormGroup;
-  currentTeacherId: number | undefined;
-  currentTeacherName: string | undefined;
+
+  uploadForm!: FormGroup;
+
   selectedFiles: File[] = [];
   uploadedFiles: UploadedFile[] = [];
-  isUploading: boolean = false;
-  uploadProgress: number = 0;
+
+  isUploading = false;
 
   constructor(
     private fb: FormBuilder,
     private courseService: CourseService,
-    private fileUploadService: FileUploadService,
-    private router: Router,
-    private authService: AuthService,
-    private toastController: ToastController,
-    private alertController: AlertController
-  ) {
+    private uploadService: FileUploadService,
+    private toastCtrl: ToastController,
+    private loadingCtrl: LoadingController,
+    private router: Router
+  ) {}
+
+  ngOnInit() {
     this.uploadForm = this.fb.group({
       title: ['', Validators.required],
       description: ['', Validators.required],
-      price: ['', [Validators.required, Validators.min(0)]],
+      price: [0, [Validators.required, Validators.min(0)]],
       category: ['', Validators.required],
-      cover: ['assets/icon/favicon.png'] // Default cover for now
+      level: ['beginner', Validators.required],
     });
   }
 
-  ngOnInit() {
-    const currentUser = this.authService.currentUserValue;
-    if (currentUser && currentUser.role === 'teacher') {
-      this.currentTeacherId = currentUser.id;
-      this.currentTeacherName = `${currentUser.firstName} ${currentUser.lastName}`;
-    } else {
-      // Handle case where non-teacher user tries to access (though RoleGuard should prevent this)
-      this.presentToast('You are not authorized to upload courses.', 'danger');
-      this.router.navigate(['/home']);
-    }
-  }
-
-  async presentToast(message: string, color: string = 'primary') {
-    const toast = await this.toastController.create({
-      message: message,
-      duration: 2000,
-      color: color
-    });
-    toast.present();
-  }
-
-  // File selection methods
-  async selectFiles() {
+  /* =====================================================
+     FILE SELECTION
+     ===================================================== */
+  selectFiles() {
     const input = document.createElement('input');
     input.type = 'file';
     input.multiple = true;
-    input.accept = '.pdf,.doc,.docx,.ppt,.pptx,.jpg,.jpeg,.png,.gif,.mp4,.mov,.txt';
-    
-    input.onchange = (event: any) => {
-      const files = Array.from(event.target.files) as File[];
-      this.validateAndAddFiles(files);
-    };
-    
-    input.click();
-  }
+    input.accept = '.pdf,.doc,.docx,.ppt,.pptx,.jpg,.jpeg,.png,.mp4,.mov';
 
-  validateAndAddFiles(files: File[]) {
-    const invalidFiles: string[] = [];
-    
-    files.forEach(file => {
-      if (!this.fileUploadService.isValidFileType(file)) {
-        invalidFiles.push(`${file.name} (Invalid file type)`);
-      } else if (!this.fileUploadService.isValidFileSize(file)) {
-        invalidFiles.push(`${file.name} (File too large - max 10MB)`);
+    input.onchange = (event: Event) => {
+      const target = event.target as HTMLInputElement;
+      if (!target.files) return;
+
+      const files = Array.from(target.files);
+      
+      // Validation de la taille (max 50MB par fichier)
+      const maxSize = 50 * 1024 * 1024; // 50MB
+      const invalidFiles = files.filter(f => f.size > maxSize);
+      
+      if (invalidFiles.length > 0) {
+        this.showToast('Some files are too large (max 50MB)', 'warning');
+        this.selectedFiles = files.filter(f => f.size <= maxSize);
       } else {
-        this.selectedFiles.push(file);
+        this.selectedFiles = files;
       }
-    });
 
-    if (invalidFiles.length > 0) {
-      this.presentToast(`Some files were not added:\n${invalidFiles.join('\n')}`, 'warning');
-    }
-    
-    if (files.length - invalidFiles.length > 0) {
-      this.presentToast(`${files.length - invalidFiles.length} file(s) added successfully`, 'success');
-    }
+      console.log('Files selected:', this.selectedFiles.length);
+    };
+
+    input.click();
   }
 
   removeSelectedFile(index: number) {
     this.selectedFiles.splice(index, 1);
   }
 
+  /* =====================================================
+     UPLOAD FILES TO FIREBASE STORAGE
+     ===================================================== */
   async uploadSelectedFiles() {
-    if (this.selectedFiles.length === 0) {
-      await this.presentToast('No files selected for upload', 'warning');
+    if (!this.selectedFiles.length) {
+      this.showToast('Please select files first', 'warning');
       return;
     }
 
+    const loading = await this.loadingCtrl.create({
+      message: 'Uploading files...',
+      spinner: 'crescent'
+    });
+    await loading.present();
+
     this.isUploading = true;
-    this.uploadProgress = 0;
 
-    for (let i = 0; i < this.selectedFiles.length; i++) {
-      const file = this.selectedFiles[i];
+    try {
+      // Upload un fichier à la fois
+      const uploadPromises = this.selectedFiles.map(file => 
+        this.uploadService.uploadFile(file, 'courses').toPromise()
+      );
+
+      const results = await Promise.all(uploadPromises);
       
-      try {
-        const uploadedFile = await this.fileUploadService.uploadFile(file).toPromise();
-        if (uploadedFile) {
-          this.uploadedFiles.push(uploadedFile);
-        }
-      } catch (error) {
-        console.error('Error uploading file:', error);
-        await this.presentToast(`Failed to upload ${file.name}`, 'danger');
+      this.uploadedFiles = results.filter(r => r !== undefined) as UploadedFile[];
+      this.selectedFiles = [];
+      
+      await loading.dismiss();
+      this.showToast(`${this.uploadedFiles.length} files uploaded successfully!`, 'success');
+      
+    } catch (error: any) {
+      console.error('Upload error:', error);
+      await loading.dismiss();
+      
+      // Message d'erreur plus détaillé
+      let errorMsg = 'File upload failed';
+      if (error.code === 'storage/unauthorized') {
+        errorMsg = 'Upload unauthorized. Check Firebase Storage rules.';
+      } else if (error.code === 'storage/canceled') {
+        errorMsg = 'Upload was cancelled';
+      } else if (error.code === 'storage/unknown') {
+        errorMsg = 'Unknown error occurred. Check your internet connection.';
       }
-
-      this.uploadProgress = Math.round(((i + 1) / this.selectedFiles.length) * 100);
+      
+      this.showToast(errorMsg, 'danger');
+    } finally {
+      this.isUploading = false;
     }
-
-    this.selectedFiles = [];
-    this.isUploading = false;
-    this.uploadProgress = 0;
-    
-    await this.presentToast(`Successfully uploaded ${this.uploadedFiles.length} file(s)`, 'success');
   }
 
-  removeUploadedFile(fileId: string) {
-    this.fileUploadService.deleteFile(fileId).subscribe(async success => {
-      if (success) {
-        this.uploadedFiles = this.uploadedFiles.filter(file => file.id !== fileId);
-        await this.presentToast('File removed successfully', 'success');
-      } else {
-        await this.presentToast('Failed to remove file', 'danger');
-      }
+  removeUploadedFile(id: string) {
+    const file = this.uploadedFiles.find(f => f.id === id);
+    if (file) {
+      // Optionnel: supprimer du Storage
+      this.uploadService.deleteFile(file.path).subscribe({
+        next: () => {
+          this.uploadedFiles = this.uploadedFiles.filter(f => f.id !== id);
+          this.showToast('File removed', 'success');
+        },
+        error: (err) => {
+          console.error('Error deleting file:', err);
+          this.uploadedFiles = this.uploadedFiles.filter(f => f.id !== id);
+        }
+      });
+    }
+  }
+
+  /* =====================================================
+     CREATE COURSE (FIRESTORE)
+     ===================================================== */
+  async uploadCourse() {
+    if (!this.uploadForm.valid) {
+      this.showToast('Please fill all required fields', 'warning');
+      return;
+    }
+
+    if (!this.uploadedFiles.length) {
+      this.showToast('Please upload at least one file', 'warning');
+      return;
+    }
+
+    const loading = await this.loadingCtrl.create({
+      message: 'Creating course...',
+      spinner: 'crescent'
     });
+    await loading.present();
+
+    try {
+      await this.courseService.createCourse({
+        title: this.uploadForm.value.title,
+        description: this.uploadForm.value.description,
+        price: this.uploadForm.value.price,
+        category: this.uploadForm.value.category,
+        level: this.uploadForm.value.level,
+        coverImage: this.uploadedFiles[0].url,
+        tags: this.uploadedFiles.map(f => f.name),
+        duration: 0
+      });
+
+      await loading.dismiss();
+      this.showToast('Course created successfully!', 'success');
+
+      // Reset form
+      this.uploadForm.reset({
+        price: 0,
+        level: 'beginner'
+      });
+      this.uploadedFiles = [];
+
+      // Rediriger vers teacher dashboard
+      this.router.navigate(['/teacher-dashboard']);
+
+    } catch (error: any) {
+      await loading.dismiss();
+      console.error('Course creation error:', error);
+      this.showToast(error.message || 'Course creation failed', 'danger');
+    }
+  }
+
+  /* =====================================================
+     HELPERS
+     ===================================================== */
+  formatFileSize(bytes: number): string {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(2) + ' KB';
+    return (bytes / 1024 / 1024).toFixed(2) + ' MB';
   }
 
   getFileIcon(type: string): string {
-    return this.fileUploadService.getFileIcon(type);
+    if (type.includes('pdf')) return 'document-text-outline';
+    if (type.includes('image')) return 'image-outline';
+    if (type.includes('video')) return 'videocam-outline';
+    if (type.includes('word') || type.includes('document')) return 'document-outline';
+    if (type.includes('presentation') || type.includes('powerpoint')) return 'easel-outline';
+    return 'document-outline';
   }
 
-  formatFileSize(bytes: number): string {
-    return this.fileUploadService.formatFileSize(bytes);
-  }
-
-  async uploadCourse() {
-    if (this.uploadForm.valid && this.currentTeacherId && this.currentTeacherName) {
-      // Check if at least one file is uploaded
-      if (this.uploadedFiles.length === 0) {
-        const alert = await this.alertController.create({
-          header: 'No Documents',
-          message: 'Please upload at least one document for this course.',
-          buttons: ['OK']
-        });
-        await alert.present();
-        return;
-      }
-
-      const newCourse: Course = {
-        id: 0, // ID will be generated by the service
-        teacherId: this.currentTeacherId,
-        author: this.currentTeacherName,
-        rating: 0, // Initial rating
-        enrolled: false, // Initial enrollment status
-        modules: [], // No modules initially
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        ...this.uploadForm.value
-      };
-
-      this.courseService.createCourse(newCourse).subscribe(
-        async createdCourse => {
-          await this.presentToast('Course uploaded successfully!', 'success');
-          this.uploadForm.reset();
-          this.uploadedFiles = [];
-          this.router.navigate(['/teacher-dashboard']);
-        },
-        async error => {
-          console.error('Error uploading course:', error);
-          await this.presentToast('Failed to upload course. Please try again.', 'danger');
-        }
-      );
-    } else {
-      await this.presentToast('Please fill all required fields.', 'danger');
-    }
+  private async showToast(message: string, color: 'success' | 'danger' | 'warning') {
+    const toast = await this.toastCtrl.create({
+      message,
+      duration: 3000,
+      color,
+      position: 'top'
+    });
+    toast.present();
   }
 }

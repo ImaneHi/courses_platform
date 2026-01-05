@@ -1,128 +1,103 @@
-import { Component, OnInit } from '@angular/core';
-import { IonicModule } from '@ionic/angular';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { CourseService } from 'src/app/services/course.service';
-import { ProgressService } from 'src/app/services/progress.service';
-import { AuthService } from 'src/app/services/auth.service';
-import { Course, StudentProgress } from 'src/app/services/course.model';
-import { Router } from '@angular/router';
-import { RouterModule } from '@angular/router';
+import { IonicModule } from '@ionic/angular';
+import { RouterModule, Router } from '@angular/router';
+import { Subject } from 'rxjs';
+import { takeUntil } from 'rxjs/operators';
+
+import { AuthService, AppUser } from '../../../services/auth.service';
+import { CourseService } from '../../../services/course.service';
+import { ProgressService } from '../../../services/progress.service';
+import { Course } from '../../../services/course.model';
 
 @Component({
   selector: 'app-student-dashboard',
   standalone: true,
-  imports: [IonicModule, CommonModule, RouterModule],
   templateUrl: './student-dashboard.page.html',
   styleUrls: ['./student-dashboard.page.scss'],
+  imports: [CommonModule, IonicModule, RouterModule],
 })
-export class StudentDashboardPage implements OnInit {
+export class StudentDashboardPage implements OnInit, OnDestroy {
+  private destroy$ = new Subject<void>();
+  
+  currentUser: AppUser | null = null;
   enrolledCourses: Course[] = [];
-  studentProgress: { [courseId: number]: StudentProgress } = {};
-  currentStudentId: number | undefined;
+  isLoading = true;
 
   constructor(
+    private authService: AuthService,
     private courseService: CourseService,
     private progressService: ProgressService,
-    private authService: AuthService,
     private router: Router
-  ) { }
+  ) {}
 
   ngOnInit() {
-    this.currentStudentId = this.authService.currentUserValue?.id;
-    this.loadEnrolledCourses();
-    this.loadStudentProgress();
-  }
-
-  loadEnrolledCourses() {
-    this.courseService.getCourses().subscribe(allCourses => {
-      // For now, filtering client-side. In a real app, backend would provide enrolled courses.
-      this.enrolledCourses = allCourses.filter(course => course.enrolled);
-    });
-  }
-
-  loadStudentProgress() {
-    if (this.currentStudentId) {
-      this.progressService.getEnrollments().subscribe(enrollments => {
-        const studentEnrollments = enrollments.filter(e => e.studentId === this.currentStudentId);
-        studentEnrollments.forEach(enrollment => {
-          this.studentProgress[enrollment.courseId] = enrollment.progress;
-        });
+    this.authService.currentUser$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(user => {
+        this.currentUser = user;
+        if (user) {
+          this.loadEnrolledCourses(user.uid);
+        }
       });
-    }
   }
 
-  viewCourse(id: number) {
-    this.router.navigate(['/course-detail', id]);
+  ngOnDestroy() {
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 
-  takeQuiz(courseId: number, quizId: number) {
-    this.router.navigate(['/quiz', quizId], { queryParams: { courseId } });
+  loadEnrolledCourses(studentId: string) {
+    this.isLoading = true;
+    this.courseService.getStudentCourses()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (courses) => {
+          this.enrolledCourses = courses;
+          this.isLoading = false;
+        },
+        error: (error) => {
+          console.error('Error loading enrolled courses:', error);
+          this.isLoading = false;
+        }
+      });
   }
 
-  getProgressForCourse(courseId: number): StudentProgress | undefined {
-    return this.studentProgress[courseId];
-  }
+ viewCourse(courseId?: string) {
+  if (!courseId) return;
+  this.router.navigate(['/course', courseId]);
+}
+ takeQuiz(courseId?: string, quizId?: string) {
+  if (!courseId || !quizId) return;
+  this.router.navigate(['/quiz', quizId], { queryParams: { courseId } });
+}
 
-  getProgressForCourseSafe(courseId: number): StudentProgress {
-    return this.studentProgress[courseId] || { 
-      id: 0, 
-      studentId: 0, 
-      courseId: 0, 
-      lessonsCompleted: [], 
-      quizzesCompleted: [], 
-      quizScores: {}, 
-      overallProgress: 0, 
-      courseCompleted: false 
-    };
-  }
+  canTakeQuiz(courseId?: string, quizId?: string): boolean {
+  if (!courseId || !quizId) return false;
+  return true;
+}
 
+  isQuizCompleted(courseId?: string, quizId?: string): boolean {
+  if (!courseId || !quizId) return false;
+  return false;
+}
+
+getQuizScore(courseId?: string, quizId?: string): number {
+  if (!courseId || !quizId) return 0;
+  return 0;
+}
+
+ getProgressForCourse(courseId?: string): any | null {
+  if (!courseId) return null;
+  return { overallProgress: 0 }; // TODO: remplace par ton vrai service
+}
+
+ getProgressForCourseSafe(courseId?: string): any {
+  return this.getProgressForCourse(courseId) || { overallProgress: 0 };
+}
   getProgressColor(progress: number): string {
     if (progress >= 80) return 'success';
     if (progress >= 50) return 'warning';
     return 'danger';
-  }
-
-  canTakeQuiz(courseId: number, quizId: number): boolean {
-    const progress = this.getProgressForCourse(courseId);
-    if (!progress) return false;
-    
-    // Check if quiz is already completed
-    if (progress.quizzesCompleted.includes(quizId)) return false;
-    
-    // Prefer module-level rule: if quiz belongs to a module, require all lessons in that module completed
-    const course = this.enrolledCourses.find(c => c.id === courseId);
-    if (!course) return false;
-
-    // Find module that has this quiz
-    const moduleWithQuiz = course.modules.find(m => m.quiz?.id === quizId);
-    if (moduleWithQuiz) {
-      const moduleLessonIds = moduleWithQuiz.lessons.map(l => l.id);
-      const allDone = moduleLessonIds.every(id => progress.lessonsCompleted.includes(id));
-      return allDone;
-    }
-
-    // If not a module quiz, it might be the final quiz. Require course completion.
-    if (course.finalQuiz?.id === quizId) {
-      return progress.courseCompleted || progress.overallProgress >= 100;
-    }
-
-    return false;
-  }
-
-  isQuizCompleted(courseId: number, quizId: number): boolean {
-    const progress = this.getProgressForCourse(courseId);
-    return progress?.quizzesCompleted.includes(quizId) || false;
-  }
-
-  getQuizScore(courseId: number, quizId: number): number {
-    const progress = this.getProgressForCourse(courseId);
-    return progress?.quizScores[quizId] || 0;
-  }
-
-  private getTotalLessonsForCourse(courseId: number): number {
-    const course = this.enrolledCourses.find(c => c.id === courseId);
-    if (!course) return 0;
-    
-    return course.modules.reduce((total, module) => total + module.lessons.length, 0);
   }
 }

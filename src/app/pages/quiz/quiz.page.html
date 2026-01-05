@@ -107,7 +107,7 @@
             {{ passed ? 'Passed!' : 'Failed' }}
           </h2>
           <p class="score-text">Your Score: {{ score }}%</p>
-          <p class="passing-text">Passing Score: {{ quiz?.passingScore }}%</p>
+          <p class="passing-text">Passing Score: {{ quiz?.passingScore ?? 0 }}%</p>
         </div>
 
         <!-- Answer Review -->

@@ -1,69 +1,104 @@
-export interface Lesson {
-  id: number;
+// src/app/services/course.model.ts
+export interface Course {
+  id?: string;
   title: string;
-  content: string; // HTML content, video URL, document URL, etc.
-  duration?: number; // in minutes
-  type: 'video' | 'text' | 'quiz' | 'document';
-  completed?: boolean; // Track lesson completion
-}
-
-export interface QuizQuestion {
-  id: number;
-  question: string;
-  options: string[];
-  correctAnswer: number; // Index of correct option
-  points: number;
-}
-
-export interface Quiz {
-  id: number;
-  courseId: number;
-  title: string;
-  questions: QuizQuestion[];
-  passingScore: number; // Percentage (0-100)
-  timeLimit?: number; // in minutes
+  description: string;
+  teacherId: string;
+  teacherName: string;
+  price: number;
+  coverImage: string;
+  category: string;
+  level: 'beginner' | 'intermediate' | 'advanced';
+  duration: number;
+  tags: string[];
+  isPublished: boolean;
+  rating: number;
+  totalStudents: number;
+  createdAt: any;
+  updatedAt: any;
+  
+  // Modules et structure du cours
+  modules?: Module[];
+  finalQuiz?: Quiz;
+  
+  // Propriétés pour compatibilité (legacy)
+  enrolled?: boolean;
+  cover?: string;
+  author?: string;
 }
 
 export interface Module {
-  id: number;
+  id: string;
   title: string;
-  lessons: Lesson[];
-  quiz?: Quiz; // Optional quiz at module level
+  description?: string;
+  order: number;
+  lessons?: Lesson[];
+  quiz?: Quiz;
 }
 
-export interface Course {
-  id: number;
+export interface Lesson {
+  id: string;
   title: string;
-  description: string;
-  author: string; // Can be author's name or ID
-  teacherId: number; // Link to the User ID of the teacher
-  price: number;
-  cover: string;
-  rating: number;
-  enrolled: boolean; // This property might be moved to a user-specific enrollment model
-  category: string;
-  modules: Module[]; // New property for course content structure
-  finalQuiz?: Quiz; // Optional final quiz for the entire course
+  description?: string;
+  content: string;
+  type: 'video' | 'text' | 'document' | 'quiz';
+  duration: number;
+  order: number;
+  isFreePreview?: boolean;
+  videoUrl?: string;
+  documentUrl?: string;
+}
+
+export interface Quiz {
+  id?: string;
+  title: string;
+  description?: string;
+  questions: QuizQuestion[];
+  passingScore: number;
+  timeLimit?: number;
+  maxAttempts?: number;
   createdAt: Date;
-  updatedAt: Date;
+}
+
+export interface QuizQuestion {
+  id: string;
+  question: string;
+  options: string[];
+  correctAnswer: number;
+  explanation?: string;
+  points: number;
 }
 
 export interface StudentProgress {
-  id: number;
-  studentId: number;
-  courseId: number;
-  lessonsCompleted: number[]; // Array of lesson IDs
-  quizzesCompleted: number[]; // Array of quiz IDs
-  quizScores: { [quizId: number]: number }; // Quiz ID -> Score mapping
-  overallProgress: number; // Percentage (0-100)
-  courseCompleted: boolean;
-  completedAt?: Date;
+  id?: string;
+  studentId: string;
+  courseId: string;
+  enrollmentId: string;
+  completedLessons: string[];
+  completedQuizzes: Record<string, QuizResult>;
+  currentModule?: string;
+  currentLesson?: string;
+  overallProgress: number;
+  timeSpent: number;
+  lastUpdated: Date;
 }
 
-export interface CourseEnrollment {
-  id: number;
-  studentId: number;
-  courseId: number;
+export interface QuizResult {
+  quizId: string;
+  score: number;
+  passed: boolean;
+  totalQuestions: number;
+  correctAnswers: number;
+  attemptNumber: number;
+  completedAt: Date;
+  timeTaken: number;
+  answers: number[];
+}
+
+export interface Enrollment {
+  id?: string;
+  studentId: string;
+  courseId: string;
   enrolledAt: Date;
-  progress: StudentProgress;
+  status: 'active' | 'completed' | 'cancelled';
 }

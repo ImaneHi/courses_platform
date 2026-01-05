@@ -1,51 +1,30 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { RouterModule } from '@angular/router';
 import { IonicModule } from '@ionic/angular';
-import {IonButtons,IonMenuButton,IonGrid,IonRow,IonCol,IonButton,IonIcon,} from '@ionic/angular/standalone';
-import { RouterLink } from '@angular/router';
-import { AuthService } from '../services/auth.service';
-import { User } from '../services/user.model';
-import { Subscription } from 'rxjs';
-import { CommonModule } from '@angular/common'; // Import CommonModule
+import { AuthService, AppUser } from '../services/auth.service';
 
 @Component({
   selector: 'app-home',
-  templateUrl: 'home.page.html',
-  styleUrls: ['home.page.scss'],
+  templateUrl: './home.page.html',
+  styleUrls: ['./home.page.scss'],
   standalone: true,
-  imports: [
-    IonicModule,
-    CommonModule,
-    IonButtons,
-    IonMenuButton,
-    IonGrid,
-    IonRow,
-    IonCol,
-    IonButton,
-    IonIcon,
-    RouterLink
-  ],
+  imports: [CommonModule, IonicModule, RouterModule]
 })
-export class HomePage implements OnInit, OnDestroy {
-  private userSubscription: Subscription | undefined;
-  currentUser: User | null = null;
+export class HomePage {
+  currentUser: AppUser | null = null;
 
-  constructor(private authService: AuthService) { }
-
-  ngOnInit() {
-    this.userSubscription = this.authService.currentUser.subscribe(user => {
+  constructor(public auth: AuthService) {
+    this.auth.currentUser$.subscribe((user: AppUser | null) => {
       this.currentUser = user;
     });
   }
 
   isTeacher(): boolean {
-    return this.authService.isTeacher();
+    return this.currentUser?.role === 'teacher';
   }
 
   isStudent(): boolean {
-    return this.authService.isStudent();
-  }
-
-  ngOnDestroy() {
-    this.userSubscription?.unsubscribe();
+    return this.currentUser?.role === 'student';
   }
 }

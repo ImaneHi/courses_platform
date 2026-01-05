@@ -1,8 +1,21 @@
-export interface User {
-  id: number;
+export type UserRole = 'student' | 'teacher' | 'admin';
+
+export interface UserProfile {
+  uid: string;
   email: string;
   firstName: string;
   lastName: string;
-  role: 'student' | 'teacher'; // Role-based access control
-  // Add other user-related properties as needed
+  role: UserRole;
+  avatar?: string;
+  bio?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface AuthUser {
+  uid: string;
+  email: string | null;
+  emailVerified: boolean;
+  displayName?: string | null;
+  photoURL?: string | null;
 }

@@ -1,90 +1,75 @@
-<ion-header [translucent]="true">
-  <ion-toolbar>
-    <ion-buttons slot="start">
-      <ion-menu-button></ion-menu-button>
-    </ion-buttons>
-    <ion-title>Student Dashboard</ion-title>
-  </ion-toolbar>
-</ion-header>
+<ion-item *ngFor="let course of enrolledCourses">
 
-<ion-content [fullscreen]="true" class="ion-padding">
-  <h2>My Enrolled Courses</h2>
+  <ion-label>
+    <h2>{{ course.title }}</h2>
+    <p>{{ course.category }}</p>
 
-  <div *ngIf="enrolledCourses.length === 0">
-    <p>You are not currently enrolled in any courses. Explore <a routerLink="/courses">all courses</a> to find one!</p>
-  </div>
+    <!-- ✅ capture sécurisée -->
+    <ng-container *ngIf="course.id as cid">
 
-  <ion-list *ngIf="enrolledCourses.length > 0">
-    <ion-item *ngFor="let course of enrolledCourses">
-      <ion-thumbnail slot="start">
-        <img [src]="course.cover" alt="Course Cover">
-      </ion-thumbnail>
-      <ion-label>
-        <h2>{{ course.title }}</h2>
-        <p>{{ course.author }} - {{ course.category }}</p>
-        <p>Rating: {{ course.rating }}</p>
-        
-        <!-- Progress Information -->
-        <div *ngIf="getProgressForCourse(course.id)" class="progress-info">
-          <ion-progress-bar 
-            [value]="getProgressForCourseSafe(course.id).overallProgress" 
-            [color]="getProgressColor(getProgressForCourseSafe(course.id).overallProgress)">
-          </ion-progress-bar>
-          <p class="progress-text">
-            Progress: {{ getProgressForCourseSafe(course.id).overallProgress }}%
-          </p>
-        </div>
-      </ion-label>
-      
-      <!-- Action Buttons -->
-      <ion-buttons slot="end">
-        <ion-button (click)="viewCourse(course.id)" fill="clear">
-          <ion-icon name="book-outline"></ion-icon>
-        </ion-button>
-        
-        <!-- Module Quizzes -->
-        <ng-container *ngFor="let module of course.modules">
-          <ion-button 
-            *ngIf="module.quiz && canTakeQuiz(course.id, module.quiz.id)"
-            (click)="takeQuiz(course.id, module.quiz.id)"
-            color="primary"
-            fill="outline"
-            size="small">
-            <ion-icon name="help-circle-outline" slot="start"></ion-icon>
-            {{ module.quiz.title }}
-          </ion-button>
-          
-          <ion-button 
-            *ngIf="module.quiz && isQuizCompleted(course.id, module.quiz.id)"
-            color="success"
-            fill="outline"
+      <div *ngIf="getProgressForCourse(cid)" class="progress-info">
+        <ion-progress-bar
+          [value]="getProgressForCourseSafe(cid).overallProgress / 100"
+          [color]="getProgressColor(getProgressForCourseSafe(cid).overallProgress)">
+        </ion-progress-bar>
+
+        <p>
+          Progress: {{ getProgressForCourseSafe(cid).overallProgress }}%
+        </p>
+      </div>
+
+      <ion-button (click)="viewCourse(cid)" fill="clear">
+        <ion-icon name="book-outline"></ion-icon>
+      </ion-button>
+
+      <ng-container *ngFor="let module of (course.modules || [])">
+
+        <ng-container *ngIf="module.quiz?.id as qid">
+
+          <ion-button
+            *ngIf="canTakeQuiz(cid, qid)"
+            (click)="takeQuiz(cid, qid)"
             size="small"
-            disabled>
-            <ion-icon name="checkmark-circle" slot="start"></ion-icon>
-            {{ module.quiz.title }} ({{ getQuizScore(course.id, module.quiz.id) }}%)
+            fill="outline">
+           {{ module.quiz?.title }}
+
           </ion-button>
+
+          <ion-button
+            *ngIf="isQuizCompleted(cid, qid)"
+            size="small"
+            fill="outline"
+            color="success"
+            disabled>
+            {{ module.quiz?.title }} ({{ getQuizScore(cid, qid) }}%)
+
+          </ion-button>
+
         </ng-container>
-        
-        <!-- Final Quiz -->
-        <ion-button 
-          *ngIf="course.finalQuiz && canTakeQuiz(course.id, course.finalQuiz.id)"
-          (click)="takeQuiz(course.id, course.finalQuiz.id)"
+
+      </ng-container>
+
+      <ng-container *ngIf="course.finalQuiz?.id as fqid">
+
+        <ion-button
+          *ngIf="canTakeQuiz(cid, fqid)"
+          (click)="takeQuiz(cid, fqid)"
           color="warning"
           size="small">
-          <ion-icon name="trophy-outline" slot="start"></ion-icon>
           Final Exam
         </ion-button>
-        
-        <ion-button 
-          *ngIf="course.finalQuiz && isQuizCompleted(course.id, course.finalQuiz.id)"
+
+        <ion-button
+          *ngIf="isQuizCompleted(cid, fqid)"
           color="success"
-          fill="outline"
           size="small"
           disabled>
-          <ion-icon name="checkmark-circle" slot="start"></ion-icon>
-          Final Exam ({{ getQuizScore(course.id, course.finalQuiz.id) }}%)
+          Final Exam ({{ getQuizScore(cid, fqid) }}%)
         </ion-button>
-      </ion-buttons>
-    </ion-item>
-  </ion-list>
-</ion-content>
+
+      </ng-container>
+
+    </ng-container>
+  </ion-label>
+
+</ion-item>

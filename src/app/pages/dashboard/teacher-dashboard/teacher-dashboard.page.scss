@@ -1,63 +1,41 @@
-.loading-container {
+.section-title {
+  margin: 16px 0;
+  font-weight: 600;
+}
+
+.course-card {
+  height: 100%;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 30vh;
-  
-  ion-spinner {
-    margin-bottom: 1rem;
-  }
 }
 
-.stat-item {
+.course-image {
+  height: 160px;
+  object-fit: cover;
+}
+
+.course-description {
+  font-size: 14px;
+  color: var(--ion-color-medium);
+}
+
+.course-meta {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.course-actions {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px;
+}
+
+.stat-card {
   text-align: center;
-  
-  h3 {
-    margin: 0;
-    font-size: 1.5rem;
-    font-weight: bold;
-    color: var(--ion-color-primary);
-  }
-  
-  p {
-    margin: 0.25rem 0 0 0;
-    font-size: 0.9rem;
-    color: var(--ion-color-medium);
-  }
 }
 
-.enrolled-text {
-  color: var(--ion-color-success);
-  font-weight: 600;
-  
-  ion-icon {
-    margin-right: 0.25rem;
-  }
-}
-
-ion-progress-bar {
-  margin: 0;
-  height: 8px;
-  border-radius: 4px;
-}
-
-ion-item {
-  --padding-start: 16px;
-  --padding-end: 16px;
-}
-
-ion-avatar {
-  width: 40px;
-  height: 40px;
-}
-
-@media (max-width: 768px) {
-  .stat-item h3 {
-    font-size: 1.2rem;
-  }
-  
-  .stat-item p {
-    font-size: 0.8rem;
-  }
+.empty-card ion-icon {
+  margin-bottom: 8px;
+  color: var(--ion-color-medium);
 }

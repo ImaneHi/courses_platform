@@ -1,71 +1,93 @@
-import { Component, OnInit } from '@angular/core';
-import { ActivatedRoute, Router } from '@angular/router';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { IonicModule, ToastController, AlertController } from '@ionic/angular';
+import { IonicModule } from '@ionic/angular';
+import { ActivatedRoute, Router } from '@angular/router';
+import { Subject } from 'rxjs';
+import { takeUntil } from 'rxjs/operators';
+
 import { CourseService } from '../../services/course.service';
 import { Quiz } from '../../services/course.model';
-import { ProgressService } from '../../services/progress.service';
-import { AuthService } from '../../services/auth.service';
 
 @Component({
   selector: 'app-quiz',
+  standalone: true,
+  imports: [CommonModule, FormsModule, IonicModule],
   templateUrl: './quiz.page.html',
   styleUrls: ['./quiz.page.scss'],
-  standalone: true,
-  imports: [CommonModule, FormsModule, IonicModule]
 })
-export class QuizPage implements OnInit {
-  quiz: Quiz | undefined;
-  courseId: number = 0;
-  currentQuestionIndex: number = 0;
+export class QuizPage implements OnInit, OnDestroy {
+  private destroy$ = new Subject<void>();
+  
+  quiz: Quiz | null = null;
+  quizId: string = '';
+  courseId: string = '';
+
+  isLoading = true;
+  quizCompleted = false;
+  currentQuestionIndex = 0;
   answers: number[] = [];
-  timeRemaining: number = 0;
-  quizCompleted: boolean = false;
-  score: number = 0;
-  passed: boolean = false;
-  timer: any;
-  isLoading: boolean = true;
+  timeRemaining = 0;
+  private timer: any;
+  score = 0;
+  passed = false;
 
   constructor(
     private route: ActivatedRoute,
     public router: Router,
-    private courseService: CourseService,
-    private progressService: ProgressService,
-    private authService: AuthService,
-    private toastController: ToastController,
-    private alertController: AlertController
+    private courseService: CourseService
   ) {}
 
   ngOnInit() {
-    const quizId = Number(this.route.snapshot.paramMap.get('quizId'));
-    // courseId might be passed as a route param or a query param
-    const courseIdParam = this.route.snapshot.paramMap.get('courseId');
-    const courseIdQuery = this.route.snapshot.queryParamMap.get('courseId');
-    this.courseId = Number(courseIdParam || courseIdQuery || 0);
+    this.quizId = this.route.snapshot.paramMap.get('quizId') || '';
+    this.courseId = this.route.snapshot.queryParamMap.get('courseId') || '';
 
-    if (quizId && this.courseId) {
-      this.loadQuiz(quizId);
-    } else if (quizId) {
-      // allow quiz page to load without courseId (some usages)
-      this.loadQuiz(quizId);
-    } else {
-      this.showError('Invalid quiz ID');
+    if (!this.quizId) {
+      this.router.navigate(['/courses']);
+      return;
     }
+
+    this.loadQuiz();
   }
 
-  loadQuiz(quizId: number) {
-    this.courseService.getQuizById(quizId).subscribe(quiz => {
-      if (quiz) {
-        this.quiz = quiz;
-        this.answers = new Array(quiz.questions.length).fill(-1);
-        this.timeRemaining = (quiz.timeLimit || 30) * 60; // Convert to seconds
-        this.startTimer();
-        this.isLoading = false;
-      } else {
-        this.showError('Quiz not found');
-      }
-    });
+  ngOnDestroy() {
+    if (this.timer) clearInterval(this.timer);
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
+  loadQuiz() {
+    // Pour l'instant, créer un quiz mocké
+    this.quiz = {
+      id: this.quizId,
+      title: 'Sample Quiz',
+      description: 'This is a sample quiz',
+      questions: [
+        {
+          id: '1',
+          question: 'What is Angular?',
+          options: ['A framework', 'A library', 'A programming language', 'An IDE'],
+          correctAnswer: 0,
+          points: 10
+        },
+        {
+          id: '2',
+          question: 'What is TypeScript?',
+          options: ['A superset of JavaScript', 'A CSS framework', 'A database', 'A testing tool'],
+          correctAnswer: 0,
+          points: 10
+        }
+      ],
+      passingScore: 70,
+      timeLimit: 30,
+      maxAttempts: 3,
+      createdAt: new Date()
+    };
+
+    this.answers = new Array(this.quiz.questions.length).fill(-1);
+    this.timeRemaining = (this.quiz.timeLimit || 30) * 60;
+    this.startTimer();
+    this.isLoading = false;
   }
 
   startTimer() {
@@ -78,12 +100,14 @@ export class QuizPage implements OnInit {
     }, 1000);
   }
 
-  selectAnswer(questionIndex: number, answerIndex: number) {
-    this.answers[questionIndex] = answerIndex;
+  formatTime(seconds: number): string {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m}:${s.toString().padStart(2, '0')}`;
   }
 
   nextQuestion() {
-    if (this.currentQuestionIndex < (this.quiz?.questions.length || 0) - 1) {
+    if (this.quiz && this.currentQuestionIndex < this.quiz.questions.length - 1) {
       this.currentQuestionIndex++;
     }
   }
@@ -94,114 +118,37 @@ export class QuizPage implements OnInit {
     }
   }
 
-  async submitQuiz() {
-    if (!this.quiz) return;
-
-    clearInterval(this.timer);
-
-    // Check if all questions are answered
-    const unansweredQuestions = this.answers.filter(answer => answer === -1).length;
-    if (unansweredQuestions > 0) {
-      const alert = await this.alertController.create({
-        header: 'Unanswered Questions',
-        message: `You have ${unansweredQuestions} unanswered questions. Are you sure you want to submit?`,
-        buttons: [
-          {
-            text: 'Cancel',
-            role: 'cancel'
-          },
-          {
-            text: 'Submit Anyway',
-            handler: () => this.completeQuiz()
-          }
-        ]
-      });
-      await alert.present();
-    } else {
-      await this.completeQuiz();
-    }
-  }
-
-  async completeQuiz() {
-    if (!this.quiz) return;
-
-    const result = this.courseService.calculateQuizScore(this.quiz, this.answers);
-    this.score = result.score;
-    this.passed = result.passed;
-    this.quizCompleted = true;
-
-    // Save progress
-    const currentUser = this.authService.currentUserValue;
-    if (currentUser) {
-      this.progressService.submitQuiz(
-        currentUser.id,
-        this.courseId,
-        this.quiz.id,
-        this.score,
-        this.quiz.passingScore
-      ).subscribe();
-
-      // Show result
-      await this.showQuizResult();
-    }
-  }
-
-  async showQuizResult() {
-    const message = this.passed 
-      ? `Congratulations! You passed with a score of ${this.score}%.`
-      : `You scored ${this.score}%. You need ${this.quiz?.passingScore}% to pass.`;
-
-    const alert = await this.alertController.create({
-      header: this.passed ? 'Quiz Passed!' : 'Quiz Failed',
-      message,
-      buttons: [
-        {
-          text: 'Review Answers',
-          handler: () => {
-            // Stay on the page to review answers
-          }
-        },
-        {
-          text: 'Back to Course',
-          handler: () => {
-            this.router.navigate(['/course-detail', this.courseId]);
-          }
-        }
-      ]
-    });
-    await alert.present();
-  }
-
-  formatTime(seconds: number): string {
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
-    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+  selectAnswer(questionIndex: number, answerIndex: number) {
+    this.answers[questionIndex] = answerIndex;
   }
 
   getProgress(): number {
     if (!this.quiz) return 0;
-    const answered = this.answers.filter(answer => answer !== -1).length;
-    return (answered / this.quiz.questions.length) * 100;
+    const answered = this.answers.filter(a => a !== -1).length;
+    return answered / this.quiz.questions.length;
   }
 
-  isAnswerCorrect(questionIndex: number): boolean {
-    if (!this.quiz) return false;
-    return this.answers[questionIndex] === this.quiz.questions[questionIndex].correctAnswer;
-  }
-
-  async showError(message: string) {
-    const toast = await this.toastController.create({
-      message,
-      duration: 3000,
-      color: 'danger'
-    });
-    await toast.present();
-    this.router.navigate(['/courses']);
-  }
-
-  ngOnDestroy() {
-    if (this.timer) {
-      clearInterval(this.timer);
+  submitQuiz() {
+    if (this.answers.includes(-1)) {
+      alert('Please answer all questions');
+      return;
     }
+
+    if (this.timer) clearInterval(this.timer);
+
+    if (this.quiz) {
+      let correct = 0;
+      this.quiz.questions.forEach((q, i) => {
+        if (q.correctAnswer === this.answers[i]) correct++;
+      });
+      this.score = (correct / this.quiz.questions.length) * 100;
+      this.passed = this.score >= this.quiz.passingScore;
+      this.quizCompleted = true;
+    }
+  }
+
+  isAnswerCorrect(index: number): boolean {
+    if (!this.quiz) return false;
+    return this.answers[index] === this.quiz.questions[index].correctAnswer;
   }
 }

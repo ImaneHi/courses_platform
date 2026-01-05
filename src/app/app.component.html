@@ -1,62 +1,70 @@
 <ion-app>
-  <ion-menu contentId="main-content" *ngIf="isLoggedIn()">
-    <ion-header>
-      <ion-toolbar>
-        <ion-title>Menu</ion-title>
-      </ion-toolbar>
-    </ion-header>
-    <ion-content>
-      <ion-list>
-        <ion-menu-toggle autoHide="false">
-          <ion-item routerLink="/home" routerDirection="root" detail>
-            <ion-icon name="home-outline" slot="start"></ion-icon>
-            <ion-label>Home</ion-label>
-          </ion-item>
-        </ion-menu-toggle>
+  <ng-container *ngIf="user$ | async as user; else loggedOut">
+    <ion-menu contentId="main-content">
+      <ion-header>
+        <ion-toolbar>
+          <ion-title>Menu</ion-title>
+        </ion-toolbar>
+      </ion-header>
 
-        <ion-menu-toggle autoHide="false">
-          <ion-item routerLink="/courses" routerDirection="root" detail>
-            <ion-icon name="book-outline" slot="start"></ion-icon>
-            <ion-label>Courses</ion-label>
-          </ion-item>
-        </ion-menu-toggle>
+      <ion-content>
+        <ion-list>
+          <ion-menu-toggle autoHide="false">
+            <ion-item routerLink="/home" routerDirection="root" detail>
+              <ion-icon name="home-outline" slot="start"></ion-icon>
+              <ion-label>Home</ion-label>
+            </ion-item>
+          </ion-menu-toggle>
 
-        <ion-menu-toggle autoHide="false" *ngIf="isStudent()">
-          <ion-item routerLink="/student-dashboard" routerDirection="root" detail>
-            <ion-icon name="person-outline" slot="start"></ion-icon>
-            <ion-label>Student Dashboard</ion-label>
-          </ion-item>
-        </ion-menu-toggle>
+          <ion-menu-toggle autoHide="false">
+            <ion-item routerLink="/courses" routerDirection="root" detail>
+              <ion-icon name="book-outline" slot="start"></ion-icon>
+              <ion-label>Courses</ion-label>
+            </ion-item>
+          </ion-menu-toggle>
 
-        <ion-menu-toggle autoHide="false" *ngIf="isStudent()">
-          <ion-item routerLink="/enrollments" routerDirection="root" detail>
-            <ion-icon name="receipt-outline" slot="start"></ion-icon>
-            <ion-label>My Enrollments</ion-label>
-          </ion-item>
-        </ion-menu-toggle>
+          <ion-menu-toggle autoHide="false" *ngIf="isStudent(user)">
+            <ion-item routerLink="/student-dashboard" routerDirection="root" detail>
+              <ion-icon name="person-outline" slot="start"></ion-icon>
+              <ion-label>Student Dashboard</ion-label>
+            </ion-item>
+          </ion-menu-toggle>
 
-        <ion-menu-toggle autoHide="false" *ngIf="isTeacher()">
-          <ion-item routerLink="/teacher-dashboard" routerDirection="root" detail>
-            <ion-icon name="school-outline" slot="start"></ion-icon>
-            <ion-label>Teacher Dashboard</ion-label>
-          </ion-item>
-        </ion-menu-toggle>
+          <ion-menu-toggle autoHide="false" *ngIf="isStudent(user)">
+            <ion-item routerLink="/enrollments" routerDirection="root" detail>
+              <ion-icon name="receipt-outline" slot="start"></ion-icon>
+              <ion-label>My Enrollments</ion-label>
+            </ion-item>
+          </ion-menu-toggle>
 
-        <ion-menu-toggle autoHide="false" *ngIf="isTeacher()">
-          <ion-item routerLink="/upload" routerDirection="root" detail>
-            <ion-icon name="cloud-upload-outline" slot="start"></ion-icon>
-            <ion-label>Upload Course</ion-label>
-          </ion-item>
-        </ion-menu-toggle>
+          <ion-menu-toggle autoHide="false" *ngIf="isTeacher(user)">
+            <ion-item routerLink="/teacher-dashboard" routerDirection="root" detail>
+              <ion-icon name="school-outline" slot="start"></ion-icon>
+              <ion-label>Teacher Dashboard</ion-label>
+            </ion-item>
+          </ion-menu-toggle>
 
-        <ion-menu-toggle autoHide="false">
-          <ion-item (click)="logout()" detail>
-            <ion-icon name="log-out-outline" slot="start"></ion-icon>
-            <ion-label>Logout</ion-label>
-          </ion-item>
-        </ion-menu-toggle>
-      </ion-list>
-    </ion-content>
-  </ion-menu>
-  <ion-router-outlet id="main-content"></ion-router-outlet>
+          <ion-menu-toggle autoHide="false" *ngIf="isTeacher(user)">
+            <ion-item routerLink="/upload" routerDirection="root" detail>
+              <ion-icon name="cloud-upload-outline" slot="start"></ion-icon>
+              <ion-label>Upload Course</ion-label>
+            </ion-item>
+          </ion-menu-toggle>
+
+          <ion-menu-toggle autoHide="false">
+            <ion-item (click)="logout()" detail>
+              <ion-icon name="log-out-outline" slot="start"></ion-icon>
+              <ion-label>Logout</ion-label>
+            </ion-item>
+          </ion-menu-toggle>
+        </ion-list>
+      </ion-content>
+    </ion-menu>
+
+    <ion-router-outlet id="main-content"></ion-router-outlet>
+  </ng-container>
+
+  <ng-template #loggedOut>
+    <ion-router-outlet id="main-content"></ion-router-outlet>
+  </ng-template>
 </ion-app>

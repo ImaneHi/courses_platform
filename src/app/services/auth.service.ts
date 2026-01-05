@@ -1,72 +1,165 @@
-import { Injectable } from '@angular/core';
-import { BehaviorSubject, Observable, of } from 'rxjs';
-import { User } from './user.model';
-import { Router } from '@angular/router';
+import { Injectable, inject } from '@angular/core';
+import {
+  Auth,
+  authState,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  signOut,
+  UserCredential,
+  sendEmailVerification,
+  sendPasswordResetEmail
+} from '@angular/fire/auth';
+import {
+  Firestore,
+  doc,
+  setDoc,
+  updateDoc,
+  serverTimestamp,
+  getDoc
+} from '@angular/fire/firestore';
+import { BehaviorSubject, Observable, of, from } from 'rxjs';
+import { switchMap, map, tap, catchError } from 'rxjs/operators';
 
-@Injectable({
-  providedIn: 'root'
-})
+export type UserRole = 'student' | 'teacher';
+
+export interface AppUser {
+  uid: string;
+  email: string | null;
+  firstName: string;
+  lastName: string;
+  role: UserRole;
+  avatar?: string;
+  createdAt?: any;
+  updatedAt?: any;
+}
+
+@Injectable({ providedIn: 'root' })
 export class AuthService {
-  private currentUserSubject: BehaviorSubject<User | null>;
-  public currentUser: Observable<User | null>;
 
-  constructor(private router: Router) {
-    this.currentUserSubject = new BehaviorSubject<User | null>(JSON.parse(localStorage.getItem('currentUser') || 'null'));
-    this.currentUser = this.currentUserSubject.asObservable();
+  private auth = inject(Auth);
+  private firestore = inject(Firestore);
+
+  private userProfileSubject = new BehaviorSubject<AppUser | null>(null);
+  userProfile$ = this.userProfileSubject.asObservable();
+
+  currentUser$ = authState(this.auth).pipe(
+    switchMap(user => {
+      if (!user) {
+        this.userProfileSubject.next(null);
+        return of(null);
+      }
+      return from(this.loadUserProfile(user.uid));
+    }),
+    tap(profile => this.userProfileSubject.next(profile))
+  );
+
+  isAuthenticated$ = this.currentUser$.pipe(
+    map(user => !!user)
+  );
+
+  constructor() {
+    this.currentUser$.subscribe();
   }
 
-  public get currentUserValue(): User | null {
-    return this.currentUserSubject.value;
+  // =====================
+  // REGISTER
+  // =====================
+  async register(
+    email: string,
+    password: string,
+    userData: { firstName: string; lastName: string; role: UserRole }
+  ): Promise<UserCredential> {
+
+    const credential = await createUserWithEmailAndPassword(
+      this.auth,
+      email,
+      password
+    );
+
+    await setDoc(doc(this.firestore, `users/${credential.user.uid}`), {
+      email,
+      ...userData,
+      avatar: `https://ui-avatars.com/api/?name=${userData.firstName}+${userData.lastName}`,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    });
+
+    await sendEmailVerification(credential.user);
+    return credential;
   }
 
-  login(email: string, password: string): Observable<any> {
-    // This is a mock authentication. In a real application, you would
-    // make an HTTP request to your backend authentication API.
+  // =====================
+  // LOGIN / LOGOUT
+  // =====================
+  login(email: string, password: string): Promise<UserCredential> {
+    return signInWithEmailAndPassword(this.auth, email, password);
+  }
 
-    // For demonstration purposes, let's assume valid credentials
-    // and assign a role based on the email.
-    if (email === 'teacher@example.com' && password === 'password') {
-      const teacher: User = {
-        id: 1,
-        email: 'teacher@example.com',
-        firstName: 'Teach',
-        lastName: 'Er',
-        role: 'teacher'
+  async logout(): Promise<void> {
+    await signOut(this.auth);
+    this.userProfileSubject.next(null);
+  }
+
+  // =====================
+  // LOAD USER PROFILE (🔥 FIX FINAL)
+  // =====================
+  private async loadUserProfile(uid: string): Promise<AppUser | null> {
+    try {
+      const ref = doc(this.firestore, `users/${uid}`);
+      const snap = await getDoc(ref);
+
+      if (!snap.exists()) return null;
+
+      const data = snap.data();
+
+      return {
+        uid,
+        email: data['email'] || null,
+        firstName: data['firstName'] || '',
+        lastName: data['lastName'] || '',
+        role: data['role'] || 'student',
+        avatar: data['avatar'],
+        createdAt: data['createdAt'],
+        updatedAt: data['updatedAt']
       };
-      localStorage.setItem('currentUser', JSON.stringify(teacher));
-      this.currentUserSubject.next(teacher);
-      return of({ success: true, user: teacher });
-    } else if (email === 'student@example.com' && password === 'password') {
-      const student: User = {
-        id: 2,
-        email: 'student@example.com',
-        firstName: 'Stu',
-        lastName: 'Dent',
-        role: 'student'
-      };
-      localStorage.setItem('currentUser', JSON.stringify(student));
-      this.currentUserSubject.next(student);
-      return of({ success: true, user: student });
-    } else {
-      return of({ success: false, message: 'Invalid credentials' });
+    } catch (error) {
+      console.error('Error loading user profile:', error);
+      return null;
     }
   }
 
-  logout(): void {
-    localStorage.removeItem('currentUser');
-    this.currentUserSubject.next(null);
-    this.router.navigate(['/login']);
+  // =====================
+  // UPDATE PROFILE
+  // =====================
+  async updateUserProfile(uid: string, data: Partial<AppUser>): Promise<void> {
+    await updateDoc(doc(this.firestore, `users/${uid}`), {
+      ...data,
+      updatedAt: serverTimestamp()
+    });
+
+    const current = this.userProfileSubject.value;
+    if (current) {
+      this.userProfileSubject.next({ ...current, ...data });
+    }
   }
 
-  isLoggedIn(): boolean {
-    return this.currentUserSubject.value !== null;
+  // =====================
+  // RESET PASSWORD
+  // =====================
+  resetPassword(email: string): Promise<void> {
+    return sendPasswordResetEmail(this.auth, email);
   }
 
-  isTeacher(): boolean {
-    return this.currentUserSubject.value?.role === 'teacher';
+  // =====================
+  // ROLE CHECK
+  // =====================
+  hasRole(role: UserRole): Observable<boolean> {
+    return this.userProfile$.pipe(
+      map(profile => profile?.role === role)
+    );
   }
 
-  isStudent(): boolean {
-    return this.currentUserSubject.value?.role === 'student';
+  getCurrentUser(): AppUser | null {
+    return this.userProfileSubject.value;
   }
 }

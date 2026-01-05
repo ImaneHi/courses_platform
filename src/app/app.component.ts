@@ -1,47 +1,32 @@
-import { Component, OnInit } from '@angular/core';
+import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { IonApp, IonHeader, IonToolbar, IonTitle, IonContent, IonLabel, IonRouterOutlet, IonIcon, IonMenuToggle, IonItem, IonMenu, IonList } from '@ionic/angular/standalone';
-import { AuthService } from './services/auth.service';
-import { Subscription } from 'rxjs';
-import { User } from './services/user.model';
-import { Router, RouterLink } from '@angular/router';
+import { RouterModule } from '@angular/router';
+import { IonicModule } from '@ionic/angular';
+import { AuthService, AppUser } from './services/auth.service';
+import { Observable } from 'rxjs';
 
 @Component({
   selector: 'app-root',
-  templateUrl: 'app.component.html',
   standalone: true,
-  imports: [CommonModule, IonApp, IonHeader, IonToolbar, IonTitle, IonContent, IonLabel, IonRouterOutlet, IonIcon, IonMenuToggle, IonItem, IonMenu, IonList, RouterLink],
+  imports: [CommonModule, RouterModule, IonicModule],
+  templateUrl: 'app.component.html',
 })
-export class AppComponent implements OnInit {
-  private userSubscription: Subscription | undefined;
-  currentUser: User | null = null;
+export class AppComponent {
+  user$: Observable<AppUser | null>;
 
-  constructor(private authService: AuthService, private router: Router) {}
-
-  ngOnInit() {
-    this.userSubscription = this.authService.currentUser.subscribe(user => {
-      this.currentUser = user;
-    });
+  constructor(public auth: AuthService) {
+    this.user$ = this.auth.currentUser$;
   }
 
-  isLoggedIn(): boolean {
-    return this.authService.isLoggedIn();
+  isStudent(user: AppUser | null): boolean {
+    return user?.role === 'student';
   }
 
-  isTeacher(): boolean {
-    return this.authService.isTeacher();
-  }
-
-  isStudent(): boolean {
-    return this.authService.isStudent();
+  isTeacher(user: AppUser | null): boolean {
+    return user?.role === 'teacher';
   }
 
   logout() {
-    this.authService.logout();
-    this.router.navigate(['/login']);
-  }
-
-  ngOnDestroy() {
-    this.userSubscription?.unsubscribe();
+    this.auth.logout();
   }
 }

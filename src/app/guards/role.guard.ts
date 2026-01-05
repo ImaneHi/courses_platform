@@ -1,32 +1,41 @@
-import { Injectable } from '@angular/core';
-import { CanActivate, ActivatedRouteSnapshot, RouterStateSnapshot, UrlTree, Router } from '@angular/router';
-import { Observable } from 'rxjs';
+import { inject } from '@angular/core';
+import { 
+  CanActivateFn, 
+  ActivatedRouteSnapshot, 
+  Router, 
+  UrlTree 
+} from '@angular/router';
 import { AuthService } from '../services/auth.service';
+import { map, take } from 'rxjs/operators';
+import { Observable } from 'rxjs';
 
-@Injectable({
-  providedIn: 'root'
-})
-export class RoleGuard implements CanActivate {
-  constructor(private authService: AuthService, private router: Router) {}
+export const RoleGuard: CanActivateFn = (
+  route: ActivatedRouteSnapshot
+): Observable<boolean | UrlTree> => {
+  const authService = inject(AuthService);
+  const router = inject(Router);
+  
+  const requiredRole = route.data['role'] as string;
 
-  canActivate(
-    route: ActivatedRouteSnapshot,
-    state: RouterStateSnapshot): Observable<boolean | UrlTree> | Promise<boolean | UrlTree> | boolean | UrlTree {
-    
-    const expectedRole = route.data['role'];
-    const currentUser = this.authService.currentUserValue;
-
-    if (currentUser && currentUser.role === expectedRole) {
-      return true;
-    } else {
-      // Redirect to a forbidden page or login page
-      // For now, redirect to dashboard if logged in, otherwise login
-      if (this.authService.isLoggedIn()) {
-        this.router.navigate(['/dashboard']); // Or a specific 'access denied' page
-      } else {
-        this.router.navigate(['/login']);
+  return authService.userProfile$.pipe(
+    take(1),
+    map(user => {
+      if (!user) {
+        return router.createUrlTree(['/login'], {
+          queryParams: { returnUrl: router.url }
+        });
       }
-      return false;
-    }
-  }
-}
+
+      if (user.role === requiredRole) {
+        return true;
+      }
+
+      // Rediriger vers la page d'accueil appropriée
+      if (user.role === 'teacher') {
+        return router.createUrlTree(['/teacher-dashboard']);
+      } else {
+        return router.createUrlTree(['/student-dashboard']);
+      }
+    })
+  );
+};
