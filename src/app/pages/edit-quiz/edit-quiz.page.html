@@ -1,0 +1,183 @@
+<ion-header [translucent]="true">
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-back-button (click)="goBack()"></ion-back-button>
+    </ion-buttons>
+    <ion-title>Edit Quiz - {{ lessonTitle }}</ion-title>
+    <ion-buttons slot="end">
+      <ion-button (click)="deleteQuiz()" fill="clear" color="danger" *ngIf="quiz">
+        <ion-icon name="trash-outline"></ion-icon>
+      </ion-button>
+    </ion-buttons>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content [fullscreen]="true">
+  <form [formGroup]="quizForm" class="quiz-form">
+    <!-- Quiz Details -->
+    <ion-card>
+      <ion-card-header>
+        <ion-card-title>Quiz Details</ion-card-title>
+      </ion-card-header>
+      <ion-card-content>
+        <ion-item>
+          <ion-label position="floating">Title</ion-label>
+          <ion-input formControlName="title" type="text"></ion-input>
+        </ion-item>
+
+        <ion-item>
+          <ion-label position="floating">Description</ion-label>
+          <ion-textarea formControlName="description" rows="3"></ion-textarea>
+        </ion-item>
+
+        <ion-row>
+          <ion-col size="6">
+            <ion-item>
+              <ion-label position="floating">Passing Score (%)</ion-label>
+              <ion-input formControlName="passingScore" type="number" min="1" max="100"></ion-input>
+            </ion-item>
+          </ion-col>
+          <ion-col size="6">
+            <ion-item>
+              <ion-label position="floating">Time Limit (minutes)</ion-label>
+              <ion-input formControlName="timeLimit" type="number" min="1"></ion-input>
+            </ion-item>
+          </ion-col>
+        </ion-row>
+
+        <ion-item>
+          <ion-label position="floating">Max Attempts</ion-label>
+          <ion-input formControlName="maxAttempts" type="number" min="1"></ion-input>
+        </ion-item>
+
+        <div class="quiz-summary">
+          <p><strong>Total Points:</strong> {{ getTotalPoints() }}</p>
+          <p><strong>Questions:</strong> {{ questionsArray.length }}</p>
+        </div>
+      </ion-card-content>
+    </ion-card>
+
+    <!-- Questions -->
+    <ion-card>
+      <ion-card-header>
+        <ion-card-title>Questions</ion-card-title>
+        <ion-button (click)="addQuestion()" fill="clear" size="small" color="primary">
+          <ion-icon name="add-outline" slot="start"></ion-icon>
+          Add Question
+        </ion-button>
+      </ion-card-header>
+      <ion-card-content>
+        <div formArrayName="questions" class="questions-container">
+          <div 
+            *ngFor="let questionGroup of questionsArray.controls; let i = index" 
+            [formGroupName]="i"
+            class="question-card">
+            
+            <!-- Question Header -->
+            <div class="question-header">
+              <h3>Question {{ i + 1 }}</h3>
+              <ion-button 
+                (click)="removeQuestion(i)" 
+                fill="clear" 
+                size="small" 
+                color="danger">
+                <ion-icon name="remove-outline"></ion-icon>
+              </ion-button>
+            </div>
+
+            <!-- Question Content -->
+            <ion-item>
+              <ion-label position="floating">Question</ion-label>
+              <ion-textarea [formControl]="getQuestionControl(i)" rows="3"></ion-textarea>
+            </ion-item>
+
+            <ion-row>
+              <ion-col size="8">
+                <ion-item>
+                  <ion-label position="floating">Points</ion-label>
+                  <ion-input [formControl]="getPointsControl(i)" type="number" min="1"></ion-input>
+                </ion-item>
+              </ion-col>
+              <ion-col size="4">
+                <ion-item>
+                  <ion-label position="floating">Correct Answer</ion-label>
+                  <ion-select [formControl]="getCorrectAnswerControl(i)">
+                    <ion-select-option value="0">A</ion-select-option>
+                    <ion-select-option value="1">B</ion-select-option>
+                    <ion-select-option value="2">C</ion-select-option>
+                    <ion-select-option value="3">D</ion-select-option>
+                    <ion-select-option value="4">E</ion-select-option>
+                    <ion-select-option value="5">F</ion-select-option>
+                  </ion-select>
+                </ion-item>
+              </ion-col>
+            </ion-row>
+
+            <!-- Options -->
+            <div class="options-container">
+              <h4>Options</h4>
+              <div formArrayName="options" class="options-list">
+                <div 
+                  *ngFor="let option of getOptionsArray(i).controls; let j = index" 
+                  class="option-item">
+                  <ion-item>
+                    <ion-label position="floating">{{ j === 0 ? 'A' : j === 1 ? 'B' : j === 2 ? 'C' : j === 3 ? 'D' : j === 4 ? 'E' : 'F' }}.</ion-label>
+                    <ion-input [formControlName]="j" type="text"></ion-input>
+                  </ion-item>
+                  
+                  <ion-button 
+                    *ngIf="getOptionsArray(i).length > 4"
+                    (click)="removeOption(i, j)" 
+                    fill="clear" 
+                    size="small" 
+                    color="danger">
+                    <ion-icon name="remove-outline"></ion-icon>
+                  </ion-button>
+                </div>
+              </div>
+              
+              <ion-button 
+                (click)="addOption(i)" 
+                fill="clear" 
+                size="small" 
+                color="secondary"
+                *ngIf="getOptionsArray(i).length < 6">
+                <ion-icon name="add-outline" slot="start"></ion-icon>
+                Add Option
+              </ion-button>
+            </div>
+
+            <!-- Explanation -->
+            <ion-item>
+              <ion-label position="floating">Explanation</ion-label>
+              <ion-textarea [formControl]="getExplanationControl(i)" rows="2"></ion-textarea>
+            </ion-item>
+          </div>
+        </div>
+
+        <div *ngIf="questionsArray.length === 0" class="no-questions">
+          <ion-icon name="help-circle-outline"></ion-icon>
+          <h3>No Questions Yet</h3>
+          <p>Add your first question to get started.</p>
+          <ion-button (click)="addQuestion()" fill="solid">
+            <ion-icon name="add-outline" slot="start"></ion-icon>
+            Add First Question
+          </ion-button>
+        </div>
+      </ion-card-content>
+    </ion-card>
+
+    <!-- Save Button -->
+    <div class="form-actions">
+      <ion-button 
+        (click)="saveQuiz()" 
+        [disabled]="!quizForm.valid" 
+        fill="solid" 
+        color="primary"
+        size="large">
+        <ion-icon name="save-outline" slot="start"></ion-icon>
+        Save Quiz
+      </ion-button>
+    </div>
+  </form>
+</ion-content>

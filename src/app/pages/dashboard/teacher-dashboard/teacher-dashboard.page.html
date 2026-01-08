@@ -81,16 +81,25 @@
 
             <ion-footer class="course-actions">
               <ion-button fill="clear" color="primary" [routerLink]="['/course', course.id]">
+                <ion-icon name="eye-outline" slot="start"></ion-icon>
                 View
+              </ion-button>
+
+              <ion-button fill="clear" color="secondary"
+                [routerLink]="['/manage-lessons', { queryParams: { courseId: course.id, courseTitle: course.title } }]">
+                <ion-icon name="book-outline" slot="start"></ion-icon>
+                Lessons
               </ion-button>
 
               <ion-button fill="clear" color="medium"
                 (click)="viewStudentProgress(course.id!)">
+                <ion-icon name="analytics-outline" slot="start"></ion-icon>
                 Progress
               </ion-button>
 
               <ion-button fill="clear" color="danger"
                 (click)="deleteCourse(course.id!)">
+                <ion-icon name="trash-outline" slot="start"></ion-icon>
                 Delete
               </ion-button>
             </ion-footer>

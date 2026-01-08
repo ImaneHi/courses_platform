@@ -17,7 +17,7 @@ import {
 import { Observable, of, combineLatest, firstValueFrom } from 'rxjs';
 import { map, switchMap, catchError } from 'rxjs/operators';
 
-import { Course } from '../services/course.model';
+import { Course, CourseFile } from '../services/course.model';
 import { AuthService, AppUser } from './auth.service';
 
 @Injectable({
@@ -107,10 +107,13 @@ export class CourseService {
   // CREATE COURSE (TEACHER)
   // =========================
   async createCourse(data: Partial<Course>): Promise<string> {
+    console.log('createCourse called with data:', data);
 
     const user = await firstValueFrom(this.authService.currentUser$);
+    console.log('Current user:', user);
 
     if (!user || user.role !== 'teacher') {
+      console.error('Unauthorized - user is not a teacher');
       throw new Error('Unauthorized');
     }
 
@@ -125,6 +128,8 @@ export class CourseService {
       level: data.level ?? 'beginner',
       duration: data.duration ?? 0,
       tags: data.tags ?? [],
+      files: data.files ?? [],
+      lessons: data.lessons ?? [],
       isPublished: true,
       rating: 0,
       totalStudents: 0,
@@ -132,8 +137,16 @@ export class CourseService {
       updatedAt: new Date()
     };
 
-    const ref = await addDoc(this.coursesCol, course);
-    return ref.id;
+    console.log('Final course object to be saved:', course);
+
+    try {
+      const ref = await addDoc(this.coursesCol, course);
+      console.log('Course saved successfully with ID:', ref.id);
+      return ref.id;
+    } catch (error) {
+      console.error('Error saving course to Firestore:', error);
+      throw error;
+    }
   }
 
   // =========================

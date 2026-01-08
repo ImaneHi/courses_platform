@@ -84,7 +84,7 @@ export class UploadPage implements OnInit {
   }
 
   /* =====================================================
-     UPLOAD FILES TO FIREBASE STORAGE
+     UPLOAD FILES TO LOCAL SERVER
      ===================================================== */
   async uploadSelectedFiles() {
     if (!this.selectedFiles.length) {
@@ -120,12 +120,10 @@ export class UploadPage implements OnInit {
       
       // Message d'erreur plus détaillé
       let errorMsg = 'File upload failed';
-      if (error.code === 'storage/unauthorized') {
-        errorMsg = 'Upload unauthorized. Check Firebase Storage rules.';
-      } else if (error.code === 'storage/canceled') {
-        errorMsg = 'Upload was cancelled';
-      } else if (error.code === 'storage/unknown') {
-        errorMsg = 'Unknown error occurred. Check your internet connection.';
+      if (typeof error === 'string') {
+        errorMsg = error;
+      } else if (error?.message) {
+        errorMsg = error.message;
       }
       
       this.showToast(errorMsg, 'danger');
@@ -137,7 +135,7 @@ export class UploadPage implements OnInit {
   removeUploadedFile(id: string) {
     const file = this.uploadedFiles.find(f => f.id === id);
     if (file) {
-      // Optionnel: supprimer du Storage
+      // Optionnel: supprimer du serveur local
       this.uploadService.deleteFile(file.path).subscribe({
         next: () => {
           this.uploadedFiles = this.uploadedFiles.filter(f => f.id !== id);
@@ -155,6 +153,10 @@ export class UploadPage implements OnInit {
      CREATE COURSE (FIRESTORE)
      ===================================================== */
   async uploadCourse() {
+    console.log('uploadCourse called');
+    console.log('Form valid:', this.uploadForm.valid);
+    console.log('Uploaded files:', this.uploadedFiles.length);
+    
     if (!this.uploadForm.valid) {
       this.showToast('Please fill all required fields', 'warning');
       return;
@@ -172,17 +174,24 @@ export class UploadPage implements OnInit {
     await loading.present();
 
     try {
-      await this.courseService.createCourse({
+      const courseData = {
         title: this.uploadForm.value.title,
         description: this.uploadForm.value.description,
         price: this.uploadForm.value.price,
         category: this.uploadForm.value.category,
         level: this.uploadForm.value.level,
-        coverImage: this.uploadedFiles[0].url,
+        coverImage: this.uploadedFiles[0]?.url || '',
         tags: this.uploadedFiles.map(f => f.name),
+        files: this.uploadedFiles,
         duration: 0
-      });
-
+      };
+      
+      console.log('Course data to be created:', courseData);
+      
+      await this.courseService.createCourse(courseData);
+      
+      console.log('Course created successfully!');
+      
       await loading.dismiss();
       this.showToast('Course created successfully!', 'success');
 

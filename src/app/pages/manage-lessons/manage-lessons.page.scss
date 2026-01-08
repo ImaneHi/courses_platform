@@ -1,0 +1,56 @@
+.lesson-form {
+  padding: 16px;
+}
+
+.form-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 16px;
+  
+  ion-button {
+    flex: 1;
+  }
+}
+
+.lessons-list {
+  padding: 16px;
+}
+
+.lesson-item {
+  --padding-start: 16px;
+  --padding-end: 16px;
+  margin-bottom: 8px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.lesson-item ion-icon[slot="start"] {
+  margin-right: 16px;
+}
+
+.quiz-actions {
+  display: flex;
+  gap: 4px;
+  margin-right: 8px;
+}
+
+ion-empty {
+  text-align: center;
+  padding: 32px 16px;
+  
+  ion-icon {
+    font-size: 64px;
+    color: var(--ion-color-medium);
+    margin-bottom: 16px;
+  }
+  
+  h2 {
+    margin-bottom: 8px;
+    color: var(--ion-color-dark);
+  }
+  
+  p {
+    color: var(--ion-color-medium);
+    margin-bottom: 24px;
+  }
+}

@@ -17,14 +17,26 @@ export interface Course {
   createdAt: any;
   updatedAt: any;
   
-  // Modules et structure du cours
-  modules?: Module[];
-  finalQuiz?: Quiz;
+  // Files uploaded for this course
+  files?: CourseFile[];
+  
+  // Course structure with lessons and quizzes
+  lessons?: Lesson[];
   
   // Propriétés pour compatibilité (legacy)
   enrolled?: boolean;
   cover?: string;
   author?: string;
+}
+
+export interface CourseFile {
+  id: string;
+  name: string;
+  url: string;
+  type: string;
+  size: number;
+  path: string;
+  uploadedAt: Date;
 }
 
 export interface Module {
@@ -47,6 +59,10 @@ export interface Lesson {
   isFreePreview?: boolean;
   videoUrl?: string;
   documentUrl?: string;
+  courseId: string;
+  quiz?: Quiz;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export interface Quiz {

@@ -51,6 +51,18 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/upload/upload.page').then(m => m.UploadPage)
   },
   {
+    path: 'manage-lessons',
+    canActivate: [AuthGuard, RoleGuard],
+    data: { role: 'teacher' },
+    loadComponent: () => import('./pages/manage-lessons/manage-lessons.page').then(m => m.ManageLessonsPage)
+  },
+  {
+    path: 'edit-quiz',
+    canActivate: [AuthGuard, RoleGuard],
+    data: { role: 'teacher' },
+    loadComponent: () => import('./pages/edit-quiz/edit-quiz.page').then(m => m.EditQuizPage)
+  },
+  {
     path: 'quiz/:quizId',
     canActivate: [AuthGuard],
     loadComponent: () => import('./pages/quiz/quiz.page').then(m => m.QuizPage)

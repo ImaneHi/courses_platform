@@ -1,0 +1,148 @@
+<ion-header [translucent]="true">
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="/teacher-dashboard"></ion-back-button>
+    </ion-buttons>
+    <ion-title>{{ courseTitle }} - Lessons</ion-title>
+    <ion-buttons slot="end">
+      <ion-button (click)="startCreatingLesson()" fill="clear">
+        <ion-icon name="add-outline" slot="start"></ion-icon>
+        Add Lesson
+      </ion-button>
+    </ion-buttons>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content [fullscreen]="true">
+  <!-- Lesson Creation/Edit Form -->
+  <div *ngIf="isCreatingLesson || selectedLesson" class="lesson-form">
+    <ion-card>
+      <ion-card-header>
+        <ion-card-title>
+          {{ isCreatingLesson ? 'Create New Lesson' : 'Edit Lesson' }}
+        </ion-card-title>
+      </ion-card-header>
+      <ion-card-content>
+        <form [formGroup]="lessonForm">
+          <ion-item>
+            <ion-label position="floating">Title</ion-label>
+            <ion-input formControlName="title" type="text"></ion-input>
+          </ion-item>
+
+          <ion-item>
+            <ion-label position="floating">Description</ion-label>
+            <ion-textarea formControlName="description" rows="3"></ion-textarea>
+          </ion-item>
+
+          <ion-item>
+            <ion-label position="floating">Content</ion-label>
+            <ion-textarea formControlName="content" rows="6"></ion-textarea>
+          </ion-item>
+
+          <ion-item>
+            <ion-label position="floating">Type</ion-label>
+            <ion-select formControlName="type">
+              <ion-select-option value="text">Text</ion-select-option>
+              <ion-select-option value="video">Video</ion-select-option>
+              <ion-select-option value="document">Document</ion-select-option>
+            </ion-select>
+          </ion-item>
+
+          <ion-item>
+            <ion-label position="floating">Duration (minutes)</ion-label>
+            <ion-input formControlName="duration" type="number"></ion-input>
+          </ion-item>
+
+          <ion-item>
+            <ion-toggle formControlName="isFreePreview">Free Preview</ion-toggle>
+          </ion-item>
+
+          <ion-item *ngIf="lessonForm.value.type === 'video'">
+            <ion-label position="floating">Video URL</ion-label>
+            <ion-input formControlName="videoUrl" type="url"></ion-input>
+          </ion-item>
+
+          <ion-item *ngIf="lessonForm.value.type === 'document'">
+            <ion-label position="floating">Document URL</ion-label>
+            <ion-input formControlName="documentUrl" type="url"></ion-input>
+          </ion-item>
+
+          <div class="form-actions">
+            <ion-button (click)="saveLesson()" [disabled]="!lessonForm.valid" fill="solid" color="primary">
+              {{ isCreatingLesson ? 'Create Lesson' : 'Update Lesson' }}
+            </ion-button>
+            <ion-button (click)="cancelLessonEdit()" fill="clear" color="medium">
+              Cancel
+            </ion-button>
+          </div>
+        </form>
+      </ion-card-content>
+    </ion-card>
+  </div>
+
+  <!-- Lessons List -->
+  <div *ngIf="!isCreatingLesson && !selectedLesson" class="lessons-list">
+    <ion-list *ngIf="lessons.length > 0">
+      <ion-item *ngFor="let lesson of lessons; let i = index" class="lesson-item">
+        <ion-icon [name]="getLessonIcon(lesson.type)" slot="start" color="primary"></ion-icon>
+        
+        <ion-label>
+          <h2>{{ lesson.title }}</h2>
+          <p>{{ lesson.description }}</p>
+          <p>Duration: {{ formatDuration(lesson.duration) }}</p>
+          <p *ngIf="lesson.isFreePreview" color="success">
+            <ion-icon name="checkmark-circle" size="small"></ion-icon>
+            Free Preview
+          </p>
+        </ion-label>
+
+        <ion-buttons slot="end">
+          <!-- Quiz Actions -->
+          <div *ngIf="lesson.quiz" class="quiz-actions">
+            <ion-button (click)="editQuiz(lesson)" fill="clear" size="small" color="primary">
+              <ion-icon name="create-outline"></ion-icon>
+            </ion-button>
+            <ion-button (click)="removeQuiz(lesson)" fill="clear" size="small" color="danger">
+              <ion-icon name="trash-outline"></ion-icon>
+            </ion-button>
+          </div>
+
+          <!-- Generate Quiz -->
+          <ion-button 
+            *ngIf="!lesson.quiz && lesson.content" 
+            (click)="generateQuiz(lesson)" 
+            fill="clear" 
+            size="small" 
+            color="secondary">
+            <ion-icon name="sparkles-outline"></ion-icon>
+            Generate Quiz
+          </ion-button>
+
+          <!-- Upload File -->
+          <ion-button (click)="uploadFile(lesson)" fill="clear" size="small" color="tertiary">
+            <ion-icon name="cloud-upload-outline"></ion-icon>
+          </ion-button>
+
+          <!-- Edit/Delete -->
+          <ion-button (click)="editLesson(lesson)" fill="clear" size="small">
+            <ion-icon name="create-outline"></ion-icon>
+          </ion-button>
+          <ion-button (click)="deleteLesson(lesson)" fill="clear" size="small" color="danger">
+            <ion-icon name="trash-outline"></ion-icon>
+          </ion-button>
+        </ion-buttons>
+      </ion-item>
+    </ion-list>
+
+    <!-- No Lessons State -->
+    <div *ngIf="lessons.length === 0" class="no-lessons">
+      <ion-icon name="book-outline"></ion-icon>
+      <h2>No Lessons Yet</h2>
+      <p>Start by creating your first lesson for this course.</p>
+      <ion-button (click)="startCreatingLesson()" fill="solid">
+        <ion-icon name="add-outline" slot="start"></ion-icon>
+        Create First Lesson
+      </ion-button>
+    </div>
+  </div>
+</ion-content>

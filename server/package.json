@@ -1,0 +1,21 @@
+{
+  "name": "courses-platform-server",
+  "version": "1.0.0",
+  "description": "Local file upload server for courses platform",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js"
+  },
+  "dependencies": {
+    "express": "^5.2.1",
+    "multer": "^2.0.2",
+    "cors": "^2.8.5"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  },
+  "keywords": ["express", "multer", "file-upload"],
+  "author": "",
+  "license": "ISC"
+}

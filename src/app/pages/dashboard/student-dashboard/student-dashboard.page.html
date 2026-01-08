@@ -22,50 +22,27 @@
         <ion-icon name="book-outline"></ion-icon>
       </ion-button>
 
-      <ng-container *ngFor="let module of (course.modules || [])">
+      <ng-container *ngFor="let lesson of (course.lessons || [])">
 
-        <ng-container *ngIf="module.quiz?.id as qid">
+        <ng-container *ngIf="lesson.quiz?.id as qid">
 
           <ion-button
             *ngIf="canTakeQuiz(cid, qid)"
             (click)="takeQuiz(cid, qid)"
-            size="small"
-            fill="outline">
-           {{ module.quiz?.title }}
-
+            color="primary"
+            size="small">
+            Quiz: {{ lesson.title }}
           </ion-button>
 
           <ion-button
             *ngIf="isQuizCompleted(cid, qid)"
-            size="small"
-            fill="outline"
             color="success"
+            size="small"
             disabled>
-            {{ module.quiz?.title }} ({{ getQuizScore(cid, qid) }}%)
-
+            Quiz: {{ lesson.title }} ({{ getQuizScore(cid, qid) }}%)
           </ion-button>
 
         </ng-container>
-
-      </ng-container>
-
-      <ng-container *ngIf="course.finalQuiz?.id as fqid">
-
-        <ion-button
-          *ngIf="canTakeQuiz(cid, fqid)"
-          (click)="takeQuiz(cid, fqid)"
-          color="warning"
-          size="small">
-          Final Exam
-        </ion-button>
-
-        <ion-button
-          *ngIf="isQuizCompleted(cid, fqid)"
-          color="success"
-          size="small"
-          disabled>
-          Final Exam ({{ getQuizScore(cid, fqid) }}%)
-        </ion-button>
 
       </ng-container>
 
