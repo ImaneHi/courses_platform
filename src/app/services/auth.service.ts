@@ -52,11 +52,10 @@ export class AuthService {
       // This creates the observable only when subscribed to
       const userRef = doc(this.firestore, `users/${user.uid}`);
       return defer(() => from(getDoc(userRef))).pipe(
-        map((snap) => {
+        switchMap((snap) => {
           const data = snap.data();
-          
+
           if (!data) {
-            // Create default profile if none exists
             const defaultProfile: AppUser = {
               uid: user.uid,
               email: user.email,
@@ -67,21 +66,28 @@ export class AuthService {
               createdAt: new Date(),
               updatedAt: new Date()
             };
-            // Create profile in Firestore asynchronously (don't wait)
-            setDoc(userRef, {
-              email: user.email,
-              firstName: '',
-              lastName: '',
-              role: 'student',
-              avatar: defaultProfile.avatar,
-              createdAt: serverTimestamp(),
-              updatedAt: serverTimestamp()
-            }).catch(err => console.error('Error creating default profile:', err));
-            
-            this.userProfileSubject.next(defaultProfile);
-            return defaultProfile;
+
+            // Important: security rules use users/{uid}.role via get().
+            // Write the profile before emitting, otherwise the next write (e.g. enroll)
+            // can fail with permission-denied.
+            return from(
+              setDoc(userRef, {
+                email: user.email,
+                firstName: '',
+                lastName: '',
+                role: 'student',
+                avatar: defaultProfile.avatar,
+                createdAt: serverTimestamp(),
+                updatedAt: serverTimestamp()
+              })
+            ).pipe(
+              map(() => {
+                this.userProfileSubject.next(defaultProfile);
+                return defaultProfile;
+              })
+            );
           }
-          
+
           const profile: AppUser = {
             uid: user.uid,
             email: data.email || null,
@@ -92,9 +98,9 @@ export class AuthService {
             createdAt: data.createdAt,
             updatedAt: data.updatedAt
           };
-          
+
           this.userProfileSubject.next(profile);
-          return profile;
+          return of(profile);
         }),
         catchError(error => {
           console.error('Error loading user profile:', error);

@@ -11,7 +11,15 @@ import { provideAuth, getAuth } from '@angular/fire/auth';
 import { provideFirestore, getFirestore } from '@angular/fire/firestore';
 import { provideStorage, getStorage } from '@angular/fire/storage';
 
+import { addIcons } from 'ionicons';
+import { checkmarkCircleOutline, personAddOutline } from 'ionicons/icons';
+
 import { environment } from './environments/environment';
+
+addIcons({
+  checkmarkCircleOutline,
+  personAddOutline,
+});
 
 bootstrapApplication(AppComponent, {
   providers: [

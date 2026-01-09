@@ -5,7 +5,6 @@ import {
   collection,
   collectionData,
   doc,
-  docData,
   updateDoc,
   addDoc,
   query,
@@ -14,7 +13,8 @@ import {
   arrayUnion,
   DocumentData
 } from '@angular/fire/firestore';
-import { Observable, of, combineLatest, firstValueFrom } from 'rxjs';
+import { getDoc } from 'firebase/firestore';
+import { Observable, of, combineLatest, firstValueFrom, defer, from } from 'rxjs';
 import { map, switchMap, take, catchError } from 'rxjs/operators';
 import { StudentProgress, QuizResult } from '../services/course.model'; // IMPORT CORRECT
 import { AuthService } from './auth.service';
@@ -164,12 +164,20 @@ export class ProgressService {
         // Get student user data for each progress
         const studentQueries = progresses.map(progress => {
           const studentRef = doc(this.firestore, `users/${progress.studentId}`);
-          return docData(studentRef).pipe(
-            map(studentData => ({
+          return defer(() => from(getDoc(studentRef as any))).pipe(
+            map((snap: any) => (snap?.exists?.() ? (snap.data?.() ?? null) : null)),
+            map((studentData: any) => ({
               ...progress,
               studentName: studentData ? `${studentData['firstName'] || ''} ${studentData['lastName'] || ''}`.trim() : 'Unknown Student',
               studentEmail: studentData?.['email'] || ''
-            }))
+            })),
+            catchError(() =>
+              of({
+                ...progress,
+                studentName: 'Unknown Student',
+                studentEmail: ''
+              })
+            )
           );
         });
 

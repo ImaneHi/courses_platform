@@ -123,7 +123,13 @@ export class CourseDetailPage implements OnInit, OnDestroy {
       const enrollmentId = await this.courseService.enroll(this.course.id!);
 
       // Create a progress document for the enrollment (if none exists)
-      await this.progressService.createProgressForEnrollment(this.course.id!, enrollmentId);
+      try {
+        await this.progressService.createProgressForEnrollment(this.course.id!, enrollmentId);
+      } catch (error) {
+        // Enrollment is already created. If progress creation is blocked by rules,
+        // don't fail the whole flow.
+        console.warn('Could not create progress for enrollment (continuing):', error);
+      }
 
       // Update enrollment status
       this.isEnrolled = true;
@@ -140,8 +146,14 @@ export class CourseDetailPage implements OnInit, OnDestroy {
         this.router.navigate(['/student-dashboard']);
       }, 2000);
     } catch (err: any) {
+      const isPermissionDenied =
+        err?.code === 'permission-denied' ||
+        (typeof err?.message === 'string' && err.message.toLowerCase().includes('missing or insufficient permissions'));
+
       const toast = await this.toastCtrl.create({
-        message: err.message || 'Enrollment failed',
+        message: isPermissionDenied
+          ? 'Enrollment failed due to Firestore permissions. Please deploy/update Firestore rules.'
+          : (err.message || 'Enrollment failed'),
         duration: 3000,
         color: 'danger'
       });

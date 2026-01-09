@@ -4,8 +4,7 @@ import {
   collection,
   collectionData,
   query,
-  where,
-  getCountFromServer
+  where
 } from '@angular/fire/firestore';
 import { Observable, combineLatest, of } from 'rxjs';
 import { map, switchMap } from 'rxjs/operators';
@@ -29,7 +28,6 @@ export class StatisticsService {
 
   private enrollmentsCol = collection(this.firestore, 'enrollments');
   private coursesCol = collection(this.firestore, 'courses');
-  private usersCol = collection(this.firestore, 'users');
 
   // =========================
   // GET TEACHER STATISTICS
@@ -81,59 +79,21 @@ export class StatisticsService {
   // GET TOTAL ENROLLMENTS
   // =========================
   private getTotalEnrollments(teacherId: string): Observable<number> {
-    return this.courseService.getTeacherCourses().pipe(
-      switchMap(courses => {
-        if (courses.length === 0) return of(0);
-        
-        const courseIds = courses.map(c => c.id!).filter(Boolean);
-        if (courseIds.length === 0) return of(0);
-
-        const enrollmentQueries = courseIds.map(courseId => {
-          const q = query(
-            this.enrollmentsCol,
-            where('courseId', '==', courseId)
-          );
-          return collectionData(q, { idField: 'id' });
-        });
-
-        return combineLatest(enrollmentQueries).pipe(
-          map(enrollmentsArrays => {
-            const allEnrollments = enrollmentsArrays.flat();
-            return allEnrollments.length;
-          })
-        );
-      })
-    );
+    // Firestore rules for enrollments allow teachers to read only documents where
+    // resource.data.teacherId == request.auth.uid, so queries must include teacherId.
+    const q = query(this.enrollmentsCol, where('teacherId', '==', teacherId));
+    return collectionData(q, { idField: 'id' }).pipe(map(enrollments => enrollments.length));
   }
 
   // =========================
   // GET TOTAL STUDENTS (unique)
   // =========================
   private getTotalStudents(teacherId: string): Observable<number> {
-    return this.courseService.getTeacherCourses().pipe(
-      switchMap(courses => {
-        if (courses.length === 0) return of(0);
-        
-        const courseIds = courses.map(c => c.id!).filter(Boolean);
-        if (courseIds.length === 0) return of(0);
-
-        const enrollmentQueries = courseIds.map(courseId => {
-          const q = query(
-            this.enrollmentsCol,
-            where('courseId', '==', courseId)
-          );
-          return collectionData(q, { idField: 'id' });
-        });
-
-        return combineLatest(enrollmentQueries).pipe(
-          map(enrollmentsArrays => {
-            const allEnrollments = enrollmentsArrays.flat();
-            const uniqueStudentIds = new Set(
-              allEnrollments.map((e: any) => e.studentId)
-            );
-            return uniqueStudentIds.size;
-          })
-        );
+    const q = query(this.enrollmentsCol, where('teacherId', '==', teacherId));
+    return collectionData(q, { idField: 'id' }).pipe(
+      map(enrollments => {
+        const uniqueStudentIds = new Set(enrollments.map((e: any) => e.studentId));
+        return uniqueStudentIds.size;
       })
     );
   }
