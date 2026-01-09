@@ -234,10 +234,16 @@
           <div class="quiz-section" *ngIf="selectedLesson.quiz">
             <h4>Lesson Quiz</h4>
             <p>Test your knowledge with this lesson's quiz.</p>
-            <ion-button expand="block" (click)="takeQuiz(selectedLesson.id)">
+            <ion-button
+              *ngIf="isSelectedLessonCompleted()"
+              expand="block"
+              (click)="takeQuiz(selectedLesson.id)">
               <ion-icon slot="start" name="help-circle-outline"></ion-icon>
               Take Quiz
             </ion-button>
+            <ion-text *ngIf="!isSelectedLessonCompleted()" color="medium">
+              <p>Please mark the lesson as complete to unlock the quiz.</p>
+            </ion-text>
           </div>
           
           <!-- Mark as Complete -->

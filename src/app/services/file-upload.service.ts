@@ -29,7 +29,7 @@ export class FileUploadService {
     formData.append('files', file);
     formData.append('folder', folder);
 
-    return this.http.post<UploadResponse>(`${this.SERVER_URL}/upload`, formData).pipe(
+    return this.http.post<UploadResponse>(`${this.SERVER_URL}/upload?folder=${encodeURIComponent(folder)}`, formData).pipe(
       map(response => response.files[0]),
       catchError(this.handleError)
     );
@@ -40,7 +40,7 @@ export class FileUploadService {
     files.forEach(file => formData.append('files', file));
     formData.append('folder', folder);
 
-    return this.http.post<UploadResponse>(`${this.SERVER_URL}/upload`, formData).pipe(
+    return this.http.post<UploadResponse>(`${this.SERVER_URL}/upload?folder=${encodeURIComponent(folder)}`, formData).pipe(
       map(response => response.files),
       catchError(this.handleError)
     );

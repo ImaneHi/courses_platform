@@ -263,8 +263,9 @@ export class ManageLessonsPage implements OnInit {
   // QUIZ MANAGEMENT
   // =========================
   async generateQuiz(lesson: Lesson) {
-    if (!lesson.content) {
-      this.showToast('Lesson content is required to generate quiz', 'warning');
+    const lessonContent = (lesson.content || lesson.description || lesson.title || '').trim();
+    if (!lessonContent) {
+      this.showToast('Please add lesson content or description before generating quiz', 'warning');
       return;
     }
 
@@ -290,7 +291,7 @@ export class ManageLessonsPage implements OnInit {
           handler: (data) => {
             const request: QuizGenerationRequest = {
               lessonTitle: lesson.title,
-              lessonContent: lesson.content,
+              lessonContent,
               difficulty: 'medium',
               questionCount: data.questionCount || 5,
               questionType: 'multiple-choice'
@@ -320,20 +321,53 @@ export class ManageLessonsPage implements OnInit {
         questionType: 'multiple-choice'
       };
 
-      // Use mock quiz generation for testing (replace with real AI call when API key is available)
-      const response = await firstValueFrom(this.aiQuizService.generateMockQuiz(request));
-      
-      if (response.success && response.quiz) {
-        await this.lessonService.addQuizToLesson(lesson.id!, response.quiz);
+      // Try AI generation first, then fall back to mock if AI fails.
+      const aiResponse = await firstValueFrom(this.aiQuizService.generateQuiz(request));
+
+      if (aiResponse.success && aiResponse.quiz) {
+        await this.lessonService.addQuizToLesson(lesson.id!, aiResponse.quiz);
         this.showToast('Quiz generated successfully!', 'success');
         this.loadLessons();
-      } else {
-        this.showToast(response.error || 'Failed to generate quiz', 'danger');
+        return;
       }
+
+      console.warn('AI quiz generation failed, falling back to mock:', aiResponse.error);
+      const mockResponse = await firstValueFrom(this.aiQuizService.generateMockQuiz(request));
+
+      if (mockResponse.success && mockResponse.quiz) {
+        await this.lessonService.addQuizToLesson(lesson.id!, mockResponse.quiz);
+        this.showToast('Quiz generated (fallback mode)', 'warning');
+        this.loadLessons();
+        return;
+      }
+
+      this.showToast(aiResponse.error || mockResponse.error || 'Failed to generate quiz', 'danger');
       
     } catch (error: any) {
       console.error('Quiz generation error:', error);
-      this.showToast(error.message || 'Failed to generate quiz', 'danger');
+
+      // Last-resort fallback to mock on unexpected exceptions
+      try {
+        const request: QuizGenerationRequest = {
+          lessonTitle: lesson.title,
+          lessonContent: lesson.content || lesson.description || lesson.title,
+          difficulty: options.difficulty,
+          questionCount: options.questionCount,
+          questionType: 'multiple-choice'
+        };
+
+        const mockResponse = await firstValueFrom(this.aiQuizService.generateMockQuiz(request));
+        if (mockResponse.success && mockResponse.quiz) {
+          await this.lessonService.addQuizToLesson(lesson.id!, mockResponse.quiz);
+          this.showToast('Quiz generated (fallback mode)', 'warning');
+          this.loadLessons();
+        } else {
+          this.showToast(error.message || 'Failed to generate quiz', 'danger');
+        }
+      } catch (fallbackError) {
+        console.error('Fallback quiz generation also failed:', fallbackError);
+        this.showToast(error.message || 'Failed to generate quiz', 'danger');
+      }
     } finally {
       await loading.dismiss();
     }
@@ -411,15 +445,15 @@ export class ManageLessonsPage implements OnInit {
       await loading.present();
 
       try {
+        const uploadFolder = file.type.startsWith('video/') ? 'lessons/videos' : 'lessons/documents';
         const uploadedFile = await firstValueFrom(
-          this.fileUploadService.uploadFile(file, 'lessons')
+          this.fileUploadService.uploadFile(file, uploadFolder)
         );
 
-        const updateData = {
+        const updateData: Partial<Lesson> = {
           videoUrl: file.type.startsWith('video/') ? uploadedFile.url : lesson.videoUrl,
           documentUrl: !file.type.startsWith('video/') ? uploadedFile.url : lesson.documentUrl,
-          type: file.type.startsWith('video/') ? 'video' : 
-                file.type.includes('pdf') || file.type.includes('document') ? 'document' : lesson.type
+          type: (file.type.startsWith('video/') ? 'video' : 'document') as 'video' | 'document'
         };
 
         await this.lessonService.updateLesson(lesson.id!, updateData);
@@ -541,7 +575,7 @@ export class ManageLessonsPage implements OnInit {
   // =========================
   async generateQuizForLesson() {
     const lessonTitle = this.lessonForm.value.title;
-    const lessonContent = this.lessonForm.value.content;
+    const lessonContent = this.lessonForm.value.content || this.lessonForm.value.description || '';
     
     if (!lessonTitle && !lessonContent) {
       this.showToast('Please add lesson title or content before generating quiz', 'warning');
@@ -565,30 +599,41 @@ export class ManageLessonsPage implements OnInit {
 
       // Try AI generation first
       const quizResponse = await firstValueFrom(this.aiQuizService.generateQuiz(quizRequest));
-      
+
       if (quizResponse.success && quizResponse.quiz) {
         this.generatedQuiz = quizResponse.quiz;
+
+        // If we're editing an existing lesson, persist immediately so students see it.
+        if (this.selectedLesson?.id) {
+          await this.lessonService.addQuizToLesson(this.selectedLesson.id, this.generatedQuiz);
+          this.loadLessons();
+        }
+
         await loading.dismiss();
-        this.showToast('Quiz generated successfully!', 'success');
+        this.showToast(this.selectedLesson?.id ? 'Quiz generated and saved!' : 'Quiz generated successfully!', 'success');
         return;
       }
 
-      // If AI generation failed (e.g., rate limited), fallback to mock quiz
-      if (quizResponse.error && quizResponse.error.includes('rate limit')) {
-        console.warn('AI API rate limited, using mock quiz generation');
-        const mockResponse = await firstValueFrom(this.aiQuizService.generateMockQuiz(quizRequest));
-        
-        if (mockResponse.success && mockResponse.quiz) {
-          this.generatedQuiz = mockResponse.quiz;
-          await loading.dismiss();
-          this.showToast('Quiz generated (using fallback mode due to rate limits)', 'warning');
-          return;
+      // Any AI failure (403 forbidden, 401, 429, etc.) should fall back to mock.
+      console.warn('AI quiz generation failed, falling back to mock:', quizResponse.error);
+      const mockResponse = await firstValueFrom(this.aiQuizService.generateMockQuiz(quizRequest));
+
+      if (mockResponse.success && mockResponse.quiz) {
+        this.generatedQuiz = mockResponse.quiz;
+
+        // If we're editing an existing lesson, persist immediately so students see it.
+        if (this.selectedLesson?.id) {
+          await this.lessonService.addQuizToLesson(this.selectedLesson.id, this.generatedQuiz);
+          this.loadLessons();
         }
+
+        await loading.dismiss();
+        this.showToast(this.selectedLesson?.id ? 'Fallback quiz generated and saved!' : 'AI quiz unavailable — generated a fallback quiz instead.', 'warning');
+        return;
       }
 
-      // If we get here, both AI and mock failed
       await loading.dismiss();
-      this.showToast(quizResponse.error || 'Failed to generate quiz. Please try again later.', 'danger');
+      this.showToast(quizResponse.error || mockResponse.error || 'Failed to generate quiz. Please try again later.', 'danger');
       
     } catch (error: any) {
       console.error('Quiz generation error:', error);

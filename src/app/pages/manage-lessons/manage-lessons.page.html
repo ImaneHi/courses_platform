@@ -148,35 +148,40 @@
           <!-- Quiz Actions -->
           <div *ngIf="lesson.quiz" class="quiz-actions">
             <ion-button (click)="editQuiz(lesson)" fill="clear" size="small" color="primary">
-              <ion-icon name="create-outline"></ion-icon>
+              <ion-icon name="create-outline" slot="start"></ion-icon>
+              Edit Quiz
             </ion-button>
             <ion-button (click)="removeQuiz(lesson)" fill="clear" size="small" color="danger">
-              <ion-icon name="trash-outline"></ion-icon>
+              <ion-icon name="trash-outline" slot="start"></ion-icon>
+              Remove Quiz
             </ion-button>
           </div>
 
           <!-- Generate Quiz -->
           <ion-button 
-            *ngIf="!lesson.quiz && lesson.content" 
+            *ngIf="!lesson.quiz" 
             (click)="generateQuiz(lesson)" 
             fill="clear" 
             size="small" 
             color="secondary">
-            <ion-icon name="sparkles-outline"></ion-icon>
+            <ion-icon name="sparkles-outline" slot="start"></ion-icon>
             Generate Quiz
           </ion-button>
 
           <!-- Upload File -->
           <ion-button (click)="uploadFile(lesson)" fill="clear" size="small" color="tertiary">
-            <ion-icon name="cloud-upload-outline"></ion-icon>
+            <ion-icon name="cloud-upload-outline" slot="start"></ion-icon>
+            Upload File
           </ion-button>
 
           <!-- Edit/Delete -->
-          <ion-button (click)="editLesson(lesson)" fill="clear" size="small">
-            <ion-icon name="create-outline"></ion-icon>
+          <ion-button (click)="editLesson(lesson)" fill="clear" size="small" color="primary">
+            <ion-icon name="create-outline" slot="start"></ion-icon>
+            Edit
           </ion-button>
           <ion-button (click)="deleteLesson(lesson)" fill="clear" size="small" color="danger">
-            <ion-icon name="trash-outline"></ion-icon>
+            <ion-icon name="trash-outline" slot="start"></ion-icon>
+            Delete
           </ion-button>
         </ion-buttons>
       </ion-item>

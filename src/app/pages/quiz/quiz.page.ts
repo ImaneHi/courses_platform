@@ -6,7 +6,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 
-import { CourseService } from '../../services/course.service';
+import { LessonService } from '../../services/lesson.service';
 import { Quiz } from '../../services/course.model';
 
 @Component({
@@ -20,7 +20,7 @@ export class QuizPage implements OnInit, OnDestroy {
   private destroy$ = new Subject<void>();
   
   quiz: Quiz | null = null;
-  quizId: string = '';
+  lessonId: string = '';
   courseId: string = '';
 
   isLoading = true;
@@ -35,14 +35,15 @@ export class QuizPage implements OnInit, OnDestroy {
   constructor(
     private route: ActivatedRoute,
     public router: Router,
-    private courseService: CourseService
+    private lessonService: LessonService
   ) {}
 
   ngOnInit() {
-    this.quizId = this.route.snapshot.paramMap.get('quizId') || '';
+    // Route param currently represents the lesson id (the quiz is stored under lesson.quiz)
+    this.lessonId = this.route.snapshot.paramMap.get('quizId') || '';
     this.courseId = this.route.snapshot.queryParamMap.get('courseId') || '';
 
-    if (!this.quizId) {
+    if (!this.lessonId) {
       this.router.navigate(['/courses']);
       return;
     }
@@ -57,37 +58,43 @@ export class QuizPage implements OnInit, OnDestroy {
   }
 
   loadQuiz() {
-    // Pour l'instant, créer un quiz mocké
-    this.quiz = {
-      id: this.quizId,
-      title: 'Sample Quiz',
-      description: 'This is a sample quiz',
-      questions: [
-        {
-          id: '1',
-          question: 'What is Angular?',
-          options: ['A framework', 'A library', 'A programming language', 'An IDE'],
-          correctAnswer: 0,
-          points: 10
-        },
-        {
-          id: '2',
-          question: 'What is TypeScript?',
-          options: ['A superset of JavaScript', 'A CSS framework', 'A database', 'A testing tool'],
-          correctAnswer: 0,
-          points: 10
-        }
-      ],
-      passingScore: 70,
-      timeLimit: 30,
-      maxAttempts: 3,
-      createdAt: new Date()
-    };
+    this.isLoading = true;
+    this.lessonService
+      .getLessonById(this.lessonId)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (lesson) => {
+          const quiz = (lesson as any)?.quiz as Quiz | undefined | null;
 
-    this.answers = new Array(this.quiz.questions.length).fill(-1);
-    this.timeRemaining = (this.quiz.timeLimit || 30) * 60;
-    this.startTimer();
-    this.isLoading = false;
+          if (!quiz || !quiz.questions || quiz.questions.length === 0) {
+            this.quiz = null;
+            this.isLoading = false;
+            // No quiz found for this lesson; go back to course.
+            this.router.navigate(['/courses', this.courseId]);
+            return;
+          }
+
+          // Ensure required fields exist
+          this.quiz = {
+            ...quiz,
+            id: quiz.id || this.lessonId,
+            title: quiz.title || 'Quiz',
+            passingScore: quiz.passingScore ?? 70,
+            createdAt: quiz.createdAt ? new Date(quiz.createdAt as any) : new Date()
+          };
+
+          this.answers = new Array(this.quiz.questions.length).fill(-1);
+          this.timeRemaining = (this.quiz.timeLimit || 30) * 60;
+          this.startTimer();
+          this.isLoading = false;
+        },
+        error: (err) => {
+          console.error('Failed to load quiz from lesson:', err);
+          this.quiz = null;
+          this.isLoading = false;
+          this.router.navigate(['/courses', this.courseId]);
+        }
+      });
   }
 
   startTimer() {
@@ -119,7 +126,9 @@ export class QuizPage implements OnInit, OnDestroy {
   }
 
   selectAnswer(questionIndex: number, answerIndex: number) {
-    this.answers[questionIndex] = answerIndex;
+    // ion-radio values can come through as strings; normalize to number
+    const normalized = typeof answerIndex === 'string' ? parseInt(answerIndex as any, 10) : answerIndex;
+    this.answers[questionIndex] = Number.isFinite(normalized as any) ? (normalized as any) : -1;
   }
 
   getProgress(): number {
@@ -139,7 +148,16 @@ export class QuizPage implements OnInit, OnDestroy {
     if (this.quiz) {
       let correct = 0;
       this.quiz.questions.forEach((q, i) => {
-        if (q.correctAnswer === this.answers[i]) correct++;
+        const correctAnswer = typeof (q as any).correctAnswer === 'string'
+          ? parseInt((q as any).correctAnswer, 10)
+          : Number((q as any).correctAnswer);
+        const chosen = typeof (this.answers[i] as any) === 'string'
+          ? parseInt(this.answers[i] as any, 10)
+          : Number(this.answers[i]);
+
+        if (Number.isFinite(correctAnswer) && Number.isFinite(chosen) && correctAnswer === chosen) {
+          correct++;
+        }
       });
       this.score = (correct / this.quiz.questions.length) * 100;
       this.passed = this.score >= this.quiz.passingScore;
@@ -149,6 +167,13 @@ export class QuizPage implements OnInit, OnDestroy {
 
   isAnswerCorrect(index: number): boolean {
     if (!this.quiz) return false;
-    return this.answers[index] === this.quiz.questions[index].correctAnswer;
+    const correctAnswer = typeof (this.quiz.questions[index] as any).correctAnswer === 'string'
+      ? parseInt((this.quiz.questions[index] as any).correctAnswer, 10)
+      : Number((this.quiz.questions[index] as any).correctAnswer);
+    const chosen = typeof (this.answers[index] as any) === 'string'
+      ? parseInt(this.answers[index] as any, 10)
+      : Number(this.answers[index]);
+
+    return Number.isFinite(correctAnswer) && Number.isFinite(chosen) && correctAnswer === chosen;
   }
 }

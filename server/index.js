@@ -21,7 +21,9 @@ if (!fs.existsSync(uploadsDir)) {
 // Configure multer for file storage
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    const folder = req.body.folder || 'courses';
+    // NOTE: When using multipart form uploads, req.body fields may not be available
+    // yet at this stage. Query params are reliable, so prefer req.query.folder.
+    const folder = (req.query && req.query.folder) || req.body.folder || 'courses';
     const uploadPath = path.join(uploadsDir, folder);
     
     // Create folder if it doesn't exist
@@ -74,11 +76,11 @@ app.post('/upload', upload.array('files'), (req, res) => {
       return res.status(400).json({ error: 'No files uploaded' });
     }
 
-    const folder = req.body.folder || 'courses';
+    const folder = (req.query && req.query.folder) || req.body.folder || 'courses';
     const uploadedFiles = req.files.map(file => ({
       id: file.filename,
       name: file.originalname,
-      url: `http://localhost:${PORT}/uploads/${folder}/${file.filename}`,
+      url: `http://localhost:${PORT}/uploads/${folder}/${encodeURIComponent(file.filename)}`,
       type: file.mimetype,
       size: file.size,
       path: `${folder}/${file.filename}`,

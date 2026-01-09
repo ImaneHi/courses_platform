@@ -30,6 +30,7 @@ export class CourseDetailPage implements OnInit, OnDestroy {
   isStudent = false;
   isEnrolled = false;
   isLoading = true;
+  private completedLessonIds = new Set<string>();
 
   constructor(
     private route: ActivatedRoute,
@@ -54,6 +55,8 @@ export class CourseDetailPage implements OnInit, OnDestroy {
           this.isLoading = false;
           // Load lessons for this course
           this.loadLessons(id);
+          // Load progress for this course (used for completed badges + quiz unlocking)
+          this.loadCourseProgress(id);
           // Check enrollment if student
           if (this.currentUser && this.currentUser.role === 'student') {
             this.checkEnrollmentStatus(id);
@@ -71,8 +74,24 @@ export class CourseDetailPage implements OnInit, OnDestroy {
       this.isStudent = !!user && user.role === 'student';
       if (user && user.role === 'student' && this.course?.id) {
         this.checkEnrollmentStatus(this.course.id);
+        this.loadCourseProgress(this.course.id);
       }
     });
+  }
+
+  private loadCourseProgress(courseId: string) {
+    if (!this.currentUser || this.currentUser.role !== 'student') {
+      this.completedLessonIds = new Set();
+      return;
+    }
+
+    this.progressService
+      .getCourseProgress(courseId)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(progress => {
+        const ids = (progress?.completedLessons || []).filter(Boolean);
+        this.completedLessonIds = new Set(ids);
+      });
   }
 
   loadLessons(courseId: string) {
@@ -109,7 +128,21 @@ export class CourseDetailPage implements OnInit, OnDestroy {
   }
 
   openLesson(lesson: any) {
-    this.selectedLesson = lesson;
+    if (!lesson) {
+      this.selectedLesson = null;
+      return;
+    }
+
+    // Be resilient to older/incorrect lesson.type values.
+    // If a file URL exists, prefer rendering that content.
+    const normalized = { ...lesson };
+    if (normalized.videoUrl) {
+      normalized.type = 'video';
+    } else if (normalized.documentUrl) {
+      normalized.type = 'document';
+    }
+
+    this.selectedLesson = normalized;
   }
 
   closeLesson() {
@@ -165,6 +198,7 @@ export class CourseDetailPage implements OnInit, OnDestroy {
     if (!this.course || !this.currentUser) return;
     try {
       await this.progressService.markLessonCompleted(this.course.id!, id);
+      this.completedLessonIds.add(id);
     } catch (error) {
       console.error('Error marking lesson completed', error);
     }
@@ -172,7 +206,13 @@ export class CourseDetailPage implements OnInit, OnDestroy {
 
   isLessonCompleted(id: string) {
     if (!this.course || !this.currentUser) return false;
-    return this.progressService.isLessonCompleted(this.course.id!, id);
+    return this.completedLessonIds.has(id);
+  }
+
+  isSelectedLessonCompleted(): boolean {
+    const lessonId = this.selectedLesson?.id;
+    if (!lessonId) return false;
+    return this.completedLessonIds.has(lessonId);
   }
 
   takeQuiz(id: string) {
