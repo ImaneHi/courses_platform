@@ -16,10 +16,17 @@
             </ion-item>
           </ion-menu-toggle>
 
-          <ion-menu-toggle autoHide="false">
+          <ion-menu-toggle autoHide="false" *ngIf="isStudent(user)">
             <ion-item routerLink="/courses" routerDirection="root" detail>
               <ion-icon name="book-outline" slot="start"></ion-icon>
               <ion-label>Courses</ion-label>
+            </ion-item>
+          </ion-menu-toggle>
+
+          <ion-menu-toggle autoHide="false" *ngIf="isTeacher(user)">
+            <ion-item routerLink="/teacher-courses" routerDirection="root" detail>
+              <ion-icon name="book-outline" slot="start"></ion-icon>
+              <ion-label>My Courses</ion-label>
             </ion-item>
           </ion-menu-toggle>
 
@@ -31,7 +38,7 @@
           </ion-menu-toggle>
 
           <ion-menu-toggle autoHide="false" *ngIf="isStudent(user)">
-            <ion-item routerLink="/enrollments" routerDirection="root" detail>
+            <ion-item routerLink="/my-courses" routerDirection="root" detail>
               <ion-icon name="receipt-outline" slot="start"></ion-icon>
               <ion-label>My Enrollments</ion-label>
             </ion-item>

@@ -1,41 +1,169 @@
+.welcome-section {
+  margin-bottom: 24px;
+  
+  h1 {
+    font-size: 28px;
+    font-weight: 700;
+    margin: 0 0 8px 0;
+    color: var(--ion-color-primary);
+  }
+  
+  .welcome-subtitle {
+    color: var(--ion-color-medium);
+    font-size: 16px;
+    margin: 0;
+  }
+}
+
 .section-title {
-  margin: 16px 0;
+  margin: 24px 0 16px 0;
   font-weight: 600;
+  font-size: 22px;
+}
+
+.stats-grid {
+  margin: 24px 0;
+}
+
+.stat-card {
+  text-align: center;
+  height: 100%;
+  transition: transform 0.2s ease;
+  
+  &:hover {
+    transform: translateY(-4px);
+  }
+  
+  ion-card-content {
+    padding: 20px;
+  }
+  
+  .stat-icon {
+    font-size: 48px;
+    margin-bottom: 12px;
+    opacity: 0.8;
+  }
+  
+  h2 {
+    font-size: 32px;
+    font-weight: 700;
+    margin: 8px 0;
+    color: var(--ion-color-dark);
+  }
+  
+  p {
+    color: var(--ion-color-medium);
+    font-size: 14px;
+    margin: 0;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  
+  &.stat-card-primary {
+    .stat-icon {
+      color: var(--ion-color-primary);
+    }
+  }
+  
+  &.stat-card-success {
+    .stat-icon {
+      color: var(--ion-color-success);
+    }
+  }
+  
+  &.stat-card-warning {
+    .stat-icon {
+      color: var(--ion-color-warning);
+    }
+  }
+  
+  &.stat-card-info {
+    .stat-icon {
+      color: var(--ion-color-tertiary);
+    }
+  }
 }
 
 .course-card {
   height: 100%;
   display: flex;
   flex-direction: column;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  
+  &:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+  }
 }
 
 .course-image {
-  height: 160px;
+  height: 180px;
   object-fit: cover;
+  width: 100%;
 }
 
 .course-description {
   font-size: 14px;
   color: var(--ion-color-medium);
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .course-meta {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
+  margin-top: 12px;
 }
 
 .course-actions {
   display: flex;
   justify-content: space-between;
-  padding: 8px;
+  padding: 12px;
+  gap: 4px;
+  flex-wrap: wrap;
+  
+  ion-button {
+    flex: 1;
+    min-width: 80px;
+    font-size: 12px;
+  }
 }
 
-.stat-card {
-  text-align: center;
+.progress-display {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  min-width: 100px;
+  
+  ion-progress-bar {
+    width: 100px;
+    margin-top: 4px;
+  }
 }
 
-.empty-card ion-icon {
-  margin-bottom: 8px;
+.progress-info {
+  font-size: 12px;
   color: var(--ion-color-medium);
+  margin-top: 4px;
+}
+
+.empty-card {
+  ion-icon {
+    margin-bottom: 16px;
+    color: var(--ion-color-medium);
+    font-size: 64px;
+  }
+  
+  h3 {
+    margin: 16px 0 8px 0;
+  }
+  
+  p {
+    color: var(--ion-color-medium);
+    margin-bottom: 24px;
+  }
 }

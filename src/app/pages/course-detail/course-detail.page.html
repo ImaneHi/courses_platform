@@ -1,204 +1,252 @@
 <ion-header [translucent]="true">
   <ion-toolbar color="primary">
     <ion-buttons slot="start">
-      <ion-menu-button></ion-menu-button>
+      <ion-back-button defaultHref="/courses"></ion-back-button>
     </ion-buttons>
-    <ion-title>Learning Platform</ion-title>
-    <ion-buttons slot="end" *ngIf="currentUser">
-      <ion-avatar>
-        <img [src]="currentUser.avatar || 'assets/icon/favicon.png'" 
-             alt="Profile" />
-      </ion-avatar>
-    </ion-buttons>
+    <ion-title>{{ course?.title || 'Course Details' }}</ion-title>
   </ion-toolbar>
 </ion-header>
 
 <ion-content [fullscreen]="true" class="ion-padding">
-  <!-- Hero Section -->
-  <div class="hero-section" *ngIf="!currentUser">
-    <div class="hero-content">
-      <h1 class="hero-title">Learn Without Limits</h1>
-      <p class="hero-subtitle">
-        Start, switch, or advance your career with thousands of courses 
-        from industry experts.
-      </p>
-      <div class="hero-actions">
-        <ion-button size="large" routerLink="/courses" fill="solid">
-          <ion-icon slot="start" name="search-outline"></ion-icon>
-          Explore Courses
-        </ion-button>
-        <ion-button size="large" routerLink="/login" fill="outline">
-          <ion-icon slot="start" name="log-in-outline"></ion-icon>
-          Sign In
-        </ion-button>
-      </div>
-    </div>
+  <!-- Loading State -->
+  <div *ngIf="isLoading" class="loading-container">
+    <ion-spinner></ion-spinner>
+    <p>Loading course details...</p>
   </div>
 
-  <!-- User Dashboard -->
-  <div *ngIf="currentUser" class="dashboard-section">
-    <!-- Welcome Card -->
-    <ion-card class="welcome-card">
+  <!-- Course Not Found -->
+  <div *ngIf="!isLoading && !course" class="not-found">
+    <h2>Course Not Found</h2>
+    <p>The course you're looking for doesn't exist or has been removed.</p>
+    <ion-button routerLink="/courses" fill="solid">
+      <ion-icon slot="start" name="arrow-back-outline"></ion-icon>
+      Back to Courses
+    </ion-button>
+  </div>
+
+  <!-- Course Details -->
+  <div *ngIf="!isLoading && course">
+    <!-- Course Header -->
+    <ion-card class="course-header-card">
+      <img [src]="course.coverImage || 'assets/icon/favicon.png'" 
+           [alt]="course.title" class="course-cover" />
       <ion-card-header>
-        <ion-card-title>{{ getWelcomeMessage() }}</ion-card-title>
+        <ion-card-title>{{ course.title || 'Course Details' }}</ion-card-title>
         <ion-card-subtitle>
-          {{ isStudent() ? 'Student Dashboard' : 'Teacher Dashboard' }}
+          <ion-badge color="primary">{{ course.category }}</ion-badge>
+          <ion-badge color="secondary">{{ course.level }}</ion-badge>
         </ion-card-subtitle>
       </ion-card-header>
       <ion-card-content>
-        <p>Ready to {{ isStudent() ? 'continue learning' : 'manage your courses' }}?</p>
+        <p>{{ course.description }}</p>
+        <div class="course-meta">
+          <p><strong>Teacher:</strong> {{ course.teacherName }}</p>
+          <p><strong>Duration:</strong> {{ course.duration || 0 }} hours</p>
+          <p><strong>Students:</strong> {{ course.totalStudents || 0 }}</p>
+          <p><strong>Lessons:</strong> {{ lessons.length }}</p>
+          <p><strong>Rating:</strong> 
+            <ion-icon name="star" color="warning"></ion-icon>
+            {{ course.rating || 0 }}/5
+          </p>
+          <p><strong>Price:</strong> ${{ course.price }}</p>
+        </div>
+        <div class="course-actions" *ngIf="isStudent">
+          <ion-button 
+            *ngIf="!isEnrolled" 
+            expand="block" 
+            color="primary" 
+            (click)="enroll()">
+            <ion-icon slot="start" name="person-add-outline"></ion-icon>
+            Enroll Now
+          </ion-button>
+          <ion-button 
+            *ngIf="isEnrolled" 
+            expand="block" 
+            color="success" 
+            routerLink="/student-dashboard">
+            <ion-icon slot="start" name="checkmark-circle-outline"></ion-icon>
+            Already Enrolled - Go to Dashboard
+          </ion-button>
+        </div>
+        <div class="course-actions" *ngIf="!currentUser">
+          <ion-button 
+            expand="block" 
+            color="primary" 
+            routerLink="/login">
+            <ion-icon slot="start" name="log-in-outline"></ion-icon>
+            Login to Enroll
+          </ion-button>
+        </div>
       </ion-card-content>
     </ion-card>
 
-    <!-- Quick Actions -->
-    <ion-grid>
-      <ion-row>
-        <ion-col size="12" size-md="6" *ngIf="isStudent()">
-          <ion-card [routerLink]="['/student-dashboard']" button>
-            <ion-card-header>
-              <ion-icon name="person-outline" color="primary" size="large"></ion-icon>
-              <ion-card-title>My Dashboard</ion-card-title>
-            </ion-card-header>
-            <ion-card-content>
-              Track your progress, view enrolled courses, and access your learning materials.
-            </ion-card-content>
-          </ion-card>
-        </ion-col>
-
-        <ion-col size="12" size-md="6" *ngIf="isTeacher()">
-          <ion-card [routerLink]="['/teacher-dashboard']" button>
-            <ion-card-header>
-              <ion-icon name="school-outline" color="secondary" size="large"></ion-icon>
-              <ion-card-title>Teacher Dashboard</ion-card-title>
-            </ion-card-header>
-            <ion-card-content>
-              Manage your courses, track student progress, and create new content.
-            </ion-card-content>
-          </ion-card>
-        </ion-col>
-
-        <ion-col size="12" size-md="6">
-          <ion-card [routerLink]="['/courses']" button>
-            <ion-card-header>
-              <ion-icon name="book-outline" color="tertiary" size="large"></ion-icon>
-              <ion-card-title>Browse Courses</ion-card-title>
-            </ion-card-header>
-            <ion-card-content>
-              Explore our catalog of courses across various categories and skill levels.
-            </ion-card-content>
-          </ion-card>
-        </ion-col>
-
-        <ion-col size="12" size-md="6" *ngIf="isTeacher()">
-          <ion-card [routerLink]="['/upload']" button>
-            <ion-card-header>
-              <ion-icon name="cloud-upload-outline" color="success" size="large"></ion-icon>
-              <ion-card-title>Create Course</ion-card-title>
-            </ion-card-header>
-            <ion-card-content>
-              Upload new course materials, create quizzes, and publish your content.
-            </ion-card-content>
-          </ion-card>
-        </ion-col>
-      </ion-row>
-    </ion-grid>
-
-    <!-- Popular Courses -->
-    <div *ngIf="isStudent() || !currentUser">
+    <!-- Course Lessons -->
+    <ion-card class="lessons-card">
       <ion-card-header>
-        <ion-card-title>Popular Courses</ion-card-title>
-        <ion-button fill="clear" slot="end" routerLink="/courses">
-          View All
-          <ion-icon slot="end" name="arrow-forward-outline"></ion-icon>
-        </ion-button>
+        <ion-card-title>Course Lessons</ion-card-title>
+        <ion-card-subtitle>{{ lessons.length }} lessons available</ion-card-subtitle>
       </ion-card-header>
+      <ion-card-content>
+        <div *ngIf="lessons.length === 0" class="no-lessons">
+          <ion-icon name="book-outline" size="large"></ion-icon>
+          <h3>No Lessons Yet</h3>
+          <p>This course doesn't have any lessons yet. Check back later!</p>
+        </div>
+        
+        <ion-list *ngIf="lessons.length > 0">
+          <ion-item *ngFor="let lesson of lessons; let i = index" 
+                    button (click)="openLesson(lesson)">
+            <ion-avatar slot="start">
+              <ion-icon name="play-circle-outline" size="large"></ion-icon>
+            </ion-avatar>
+            <ion-label>
+              <h2>Lesson {{ i + 1 }}: {{ lesson.title }}</h2>
+              <p>{{ lesson.description }}</p>
+              <p *ngIf="lesson.duration">
+                <ion-icon name="time-outline"></ion-icon>
+                {{ lesson.duration }} minutes
+              </p>
+            </ion-label>
+            <ion-badge slot="end" *ngIf="isLessonCompleted(lesson.id)" color="success">
+              <ion-icon name="checkmark-outline"></ion-icon>
+              Completed
+            </ion-badge>
+          </ion-item>
+        </ion-list>
+      </ion-card-content>
+    </ion-card>
 
-      <div *ngIf="isLoading" class="loading-container">
-        <ion-spinner></ion-spinner>
-        <p>Loading courses...</p>
-      </div>
+    <!-- Course Files -->
+    <ion-card class="files-card" *ngIf="course.files && course.files.length > 0">
+      <ion-card-header>
+        <ion-card-title>Course Materials</ion-card-title>
+        <ion-card-subtitle>{{ course.files.length }} files available</ion-card-subtitle>
+      </ion-card-header>
+      <ion-card-content>
+        <ion-list>
+          <ion-item *ngFor="let file of course.files" button>
+            <ion-icon 
+              slot="start" 
+              [name]="getFileIcon(file.type || '')">
+            </ion-icon>
+            <ion-label (click)="viewFile(file)">
+              <h2>{{ file.name }}</h2>
+              <p>{{ file.type || 'Unknown type' }} • {{ formatFileSize(file.size || 0) }}</p>
+            </ion-label>
+            <ion-button 
+              slot="end" 
+              fill="clear" 
+              color="primary"
+              (click)="viewFile(file)">
+              <ion-icon name="eye-outline"></ion-icon>
+            </ion-button>
+            <ion-button 
+              slot="end" 
+              fill="clear" 
+              color="secondary"
+              (click)="downloadFile(file)">
+              <ion-icon name="download-outline"></ion-icon>
+            </ion-button>
+          </ion-item>
+        </ion-list>
+      </ion-card-content>
+    </ion-card>
 
-      <ion-grid *ngIf="!isLoading && popularCourses.length > 0">
-        <ion-row>
-          <ion-col size="12" size-md="6" size-lg="3" 
-                  *ngFor="let course of popularCourses">
-            <ion-card [routerLink]="['/course-detail', course.id]" button>
-              <img [src]="course.coverImage || 'assets/icon/favicon.png'" 
-                   [alt]="course.title" />
-              <ion-card-header>
-                <ion-card-title class="course-title">
-                  {{ course.title }}
-                </ion-card-title>
-                <ion-card-subtitle>
-                  {{ course.category }} • {{ course.level }}
-                </ion-card-subtitle>
-              </ion-card-header>
-              <ion-card-content>
-                <div class="course-meta">
-                  <ion-badge color="medium">
-                    <ion-icon name="people-outline"></ion-icon>
-                    {{ course.totalStudents || 0 }}
-                  </ion-badge>
-                  <ion-badge color="warning" *ngIf="course.rating">
-                    <ion-icon name="star"></ion-icon>
-                    {{ course.rating.toFixed(1) }}
-                  </ion-badge>
-                  <ion-text color="success" class="course-price">
-                    <strong>${{ course.price }}</strong>
-                  </ion-text>
-                </div>
-              </ion-card-content>
-            </ion-card>
-          </ion-col>
-        </ion-row>
-      </ion-grid>
-    </div>
+    <!-- Teacher Actions (if teacher owns this course) -->
+    <ion-card class="teacher-actions" *ngIf="isTeacher()">
+      <ion-card-header>
+        <ion-card-title>Course Management</ion-card-title>
+      </ion-card-header>
+      <ion-card-content>
+        <ion-grid>
+          <ion-row>
+            <ion-col size="12" size-md="6">
+              <ion-button expand="block" fill="outline" [routerLink]="['/manage-lessons', course.id]">
+                <ion-icon slot="start" name="book-outline"></ion-icon>
+                Manage Lessons
+              </ion-button>
+            </ion-col>
+            <ion-col size="12" size-md="6">
+              <ion-button expand="block" fill="outline" routerLink="/upload">
+                <ion-icon slot="start" name="cloud-upload-outline"></ion-icon>
+                Upload Materials
+              </ion-button>
+            </ion-col>
+          </ion-row>
+        </ion-grid>
+      </ion-card-content>
+    </ion-card>
   </div>
 
-  <!-- Features Section -->
-  <div class="features-section">
-    <ion-card-header>
-      <ion-card-title>Why Choose Our Platform?</ion-card-title>
-    </ion-card-header>
-    
-    <ion-grid>
-      <ion-row>
-        <ion-col size="12" size-md="4">
-          <ion-card class="feature-card">
-            <ion-icon name="videocam-outline" color="primary" size="large"></ion-icon>
-            <ion-card-header>
-              <ion-card-title>Expert Instructors</ion-card-title>
-            </ion-card-header>
-            <ion-card-content>
-              Learn from industry professionals with real-world experience.
-            </ion-card-content>
-          </ion-card>
-        </ion-col>
-        
-        <ion-col size="12" size-md="4">
-          <ion-card class="feature-card">
-            <ion-icon name="time-outline" color="secondary" size="large"></ion-icon>
-            <ion-card-header>
-              <ion-card-title>Flexible Learning</ion-card-title>
-            </ion-card-header>
-            <ion-card-content>
-              Learn at your own pace with lifetime access to course materials.
-            </ion-card-content>
-          </ion-card>
-        </ion-col>
-        
-        <ion-col size="12" size-md="4">
-          <ion-card class="feature-card">
-            <ion-icon name="trophy-outline" color="tertiary" size="large"></ion-icon>
-            <ion-card-header>
-              <ion-card-title>Certification</ion-card-title>
-            </ion-card-header>
-            <ion-card-content>
-              Earn certificates to showcase your skills to employers.
-            </ion-card-content>
-          </ion-card>
-        </ion-col>
-      </ion-row>
-    </ion-grid>
-  </div>
+  <!-- Lesson Modal -->
+  <ion-modal [isOpen]="!!selectedLesson" (willDismiss)="closeLesson()">
+    <ng-template>
+      <ion-header>
+        <ion-toolbar>
+          <ion-title>{{ selectedLesson?.title }}</ion-title>
+          <ion-buttons slot="end">
+            <ion-button (click)="closeLesson()">
+              <ion-icon name="close-outline"></ion-icon>
+            </ion-button>
+          </ion-buttons>
+        </ion-toolbar>
+      </ion-header>
+      <ion-content class="ion-padding">
+        <div *ngIf="selectedLesson">
+          <h3>{{ selectedLesson.title }}</h3>
+          <p>{{ selectedLesson.description }}</p>
+          
+          <!-- Video Content -->
+          <div class="video-content" *ngIf="selectedLesson.type === 'video'">
+            <h4>Video Lesson</h4>
+            <div class="video-placeholder">
+              <ion-icon name="videocam-outline" size="large"></ion-icon>
+              <p>Video: {{ selectedLesson.videoUrl }}</p>
+              <ion-button expand="block" fill="outline" [href]="selectedLesson.videoUrl" target="_blank">
+                <ion-icon slot="start" name="play-outline"></ion-icon>
+                Watch Video
+              </ion-button>
+            </div>
+          </div>
+          
+          <!-- Document Content -->
+          <div class="document-content" *ngIf="selectedLesson.type === 'document'">
+            <h4>Document Lesson</h4>
+            <div class="document-placeholder">
+              <ion-icon name="document-text-outline" size="large"></ion-icon>
+              <p>Document: {{ selectedLesson.documentUrl }}</p>
+              <ion-button expand="block" fill="outline" [href]="selectedLesson.documentUrl" target="_blank">
+                <ion-icon slot="start" name="document-outline"></ion-icon>
+                View Document
+              </ion-button>
+            </div>
+          </div>
+          
+          <!-- Text Content -->
+          <div class="text-content" *ngIf="selectedLesson.type === 'text'">
+            <h4>Lesson Content</h4>
+            <div class="lesson-content">
+              <p>{{ selectedLesson.content || 'No content available for this lesson.' }}</p>
+            </div>
+          </div>
+          
+          <!-- Quiz Section -->
+          <div class="quiz-section" *ngIf="selectedLesson.quiz">
+            <h4>Lesson Quiz</h4>
+            <p>Test your knowledge with this lesson's quiz.</p>
+            <ion-button expand="block" (click)="takeQuiz(selectedLesson.id)">
+              <ion-icon slot="start" name="help-circle-outline"></ion-icon>
+              Take Quiz
+            </ion-button>
+          </div>
+          
+          <!-- Mark as Complete -->
+          <ion-button expand="block" color="success" (click)="markLessonCompleted(selectedLesson.id)">
+            <ion-icon slot="start" name="checkmark-circle-outline"></ion-icon>
+            Mark as Complete
+          </ion-button>
+        </div>
+      </ion-content>
+    </ng-template>
+  </ion-modal>
 </ion-content>

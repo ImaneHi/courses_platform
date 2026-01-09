@@ -1,0 +1,71 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-button (click)="close()">
+        <ion-icon name="close-outline"></ion-icon>
+      </ion-button>
+    </ion-buttons>
+    <ion-title>{{ title || 'Document Viewer' }}</ion-title>
+    <ion-buttons slot="end">
+      <ion-button [href]="rawUrl" target="_blank" fill="clear">
+        <ion-icon name="open-outline"></ion-icon>
+      </ion-button>
+    </ion-buttons>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content class="document-viewer-content">
+  <!-- PDF Viewer -->
+  <div *ngIf="isPdf()" class="pdf-container">
+    <iframe 
+      [src]="url" 
+      width="100%" 
+      height="100%" 
+      class="document-iframe"
+      frameborder="0"
+      type="application/pdf">
+    </iframe>
+  </div>
+
+  <!-- PowerPoint/PPT Viewer using Google Docs Viewer -->
+  <div *ngIf="isPpt()" class="ppt-container">
+    <iframe 
+      [src]="googleViewerUrl" 
+      width="100%" 
+      height="100%" 
+      class="document-iframe"
+      frameborder="0"
+      allow="fullscreen">
+    </iframe>
+  </div>
+
+  <!-- Image Viewer -->
+  <div *ngIf="isImage()" class="image-container">
+    <img [src]="rawUrl" [alt]="title" class="document-image" />
+  </div>
+
+  <!-- Video Viewer -->
+  <div *ngIf="isVideo()" class="video-container">
+    <video [src]="rawUrl" controls class="document-video">
+      Your browser does not support the video tag.
+    </video>
+  </div>
+
+  <!-- Other file types - Download/Open link -->
+  <div *ngIf="isOther()" class="other-container">
+    <div class="ion-text-center ion-padding">
+      <ion-icon name="document-outline" size="large" color="medium"></ion-icon>
+      <h3>Preview Not Available</h3>
+      <p>This file type cannot be previewed in the browser.</p>
+      <ion-button [href]="rawUrl" target="_blank" color="primary">
+        <ion-icon name="open-outline" slot="start"></ion-icon>
+        Open in New Tab
+      </ion-button>
+      <ion-button [href]="rawUrl" download [attr.download]="title" color="secondary">
+        <ion-icon name="download-outline" slot="start"></ion-icon>
+        Download File
+      </ion-button>
+    </div>
+  </div>
+</ion-content>
+

@@ -35,10 +35,20 @@ export class LessonService {
   getLessonsByCourse(courseId: string): Observable<Lesson[]> {
     const q = query(
       this.lessonsCol,
-      where('courseId', '==', courseId),
-      orderBy('order', 'asc')
+      where('courseId', '==', courseId)
+      // orderBy('order', 'asc') // Commented out to avoid index requirement
     );
-    return collectionData(q, { idField: 'id' }) as Observable<Lesson[]>;
+    
+    return collectionData(q, { idField: 'id' }).pipe(
+      map(lessons => {
+        // Sort in memory instead of Firestore
+        return (lessons as Lesson[]).sort((a, b) => a.order - b.order);
+      }),
+      catchError(error => {
+        console.error('LessonService: Error querying lessons:', error);
+        return of([]);
+      })
+    );
   }
 
   // =========================
@@ -64,8 +74,7 @@ export class LessonService {
 
     const lessonId = `lesson_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     
-    const lesson: Lesson = {
-      id: lessonId,
+    const lessonData: any = {
       title: data.title ?? '',
       description: data.description ?? '',
       content: data.content ?? '',
@@ -76,9 +85,18 @@ export class LessonService {
       videoUrl: data.videoUrl ?? '',
       documentUrl: data.documentUrl ?? '',
       courseId: data.courseId ?? '',
-      quiz: data.quiz,
       createdAt: new Date(),
       updatedAt: new Date()
+    };
+
+    // Only add quiz if it exists and is not undefined
+    if (data.quiz !== undefined) {
+      lessonData.quiz = data.quiz;
+    }
+
+    const lesson: Lesson = {
+      id: lessonId,
+      ...lessonData
     };
 
     const ref = await addDoc(this.lessonsCol, lesson);
@@ -89,10 +107,19 @@ export class LessonService {
   // UPDATE LESSON
   // =========================
   async updateLesson(lessonId: string, data: Partial<Lesson>): Promise<void> {
-    await updateDoc(doc(this.firestore, `lessons/${lessonId}`), {
+    const updateData: any = {
       ...data,
       updatedAt: new Date()
+    };
+    
+    // Remove undefined fields to prevent Firebase errors
+    Object.keys(updateData).forEach(key => {
+      if (updateData[key] === undefined) {
+        delete updateData[key];
+      }
     });
+    
+    await updateDoc(doc(this.firestore, `lessons/${lessonId}`), updateData);
   }
 
   // =========================

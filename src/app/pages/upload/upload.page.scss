@@ -1,3 +1,52 @@
+.cover-image-section {
+  margin-bottom: 24px;
+  padding: 16px;
+  background: var(--ion-color-light);
+  border-radius: 8px;
+  
+  ion-label {
+    display: block;
+    margin-bottom: 16px;
+    
+    h3 {
+      font-size: 16px;
+      font-weight: 600;
+      margin: 0 0 4px 0;
+      color: var(--ion-color-dark);
+    }
+    
+    p {
+      font-size: 14px;
+      color: var(--ion-color-medium);
+      margin: 0;
+    }
+  }
+  
+  .cover-image-preview {
+    position: relative;
+    margin-bottom: 16px;
+    border-radius: 8px;
+    overflow: hidden;
+    max-height: 300px;
+    
+    img {
+      width: 100%;
+      height: auto;
+      max-height: 300px;
+      object-fit: cover;
+      display: block;
+    }
+    
+    ion-button {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      --background: rgba(0, 0, 0, 0.5);
+      --color: white;
+    }
+  }
+}
+
 .selected-files {
   margin-top: 1rem;
   

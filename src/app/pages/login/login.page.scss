@@ -1,16 +1,29 @@
-ion-content {
-  --background: var(--ion-color-light);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100%;
+.login-container {
+  max-width: 500px;
+  margin: 0 auto;
+  padding: 20px;
+
+  h2 {
+    text-align: center;
+    margin-bottom: 8px;
+    font-size: 28px;
+    font-weight: 600;
+  }
+
+  .subtitle {
+    text-align: center;
+    color: var(--ion-color-medium);
+    margin-bottom: 30px;
+    font-size: 16px;
+  }
 
   form {
-    width: 80%;
-    max-width: 500px;
-    background: #fff;
-    padding: 20px;
-    border-radius: 10px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    margin-top: 20px;
+  }
+
+  ion-item {
+    --padding-start: 0;
+    --inner-padding-end: 0;
+    margin-bottom: 16px;
   }
 }

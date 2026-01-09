@@ -20,7 +20,72 @@
   <!-- ================= COURSES VIEW ================= -->
   <ng-container *ngIf="!selectedCourseId">
 
-    <ion-text color="medium">
+    <!-- Welcome Section -->
+    <div class="welcome-section" *ngIf="currentUser">
+      <h1>Welcome back, {{ currentUser.firstName || 'Teacher' }}!</h1>
+      <p class="welcome-subtitle">Here's an overview of your teaching activity</p>
+    </div>
+
+    <!-- Statistics Cards -->
+    <ion-grid class="stats-grid" *ngIf="!isLoading">
+      <ion-row>
+        <ion-col size="12" size-md="6" size-lg="3">
+          <ion-card class="stat-card stat-card-primary">
+            <ion-card-content>
+              <div class="stat-icon">
+                <ion-icon name="people-outline"></ion-icon>
+              </div>
+              <h2>{{ statistics.totalStudents }}</h2>
+              <p>Total Students</p>
+            </ion-card-content>
+          </ion-card>
+        </ion-col>
+
+        <ion-col size="12" size-md="6" size-lg="3">
+          <ion-card class="stat-card stat-card-success">
+            <ion-card-content>
+              <div class="stat-icon">
+                <ion-icon name="book-outline"></ion-icon>
+              </div>
+              <h2>{{ statistics.totalCourses }}</h2>
+              <p>Total Courses</p>
+            </ion-card-content>
+          </ion-card>
+        </ion-col>
+
+        <ion-col size="12" size-md="6" size-lg="3">
+          <ion-card class="stat-card stat-card-warning">
+            <ion-card-content>
+              <div class="stat-icon">
+                <ion-icon name="school-outline"></ion-icon>
+              </div>
+              <h2>{{ statistics.totalEnrollments }}</h2>
+              <p>Total Enrollments</p>
+            </ion-card-content>
+          </ion-card>
+        </ion-col>
+
+        <ion-col size="12" size-md="6" size-lg="3">
+          <ion-card class="stat-card stat-card-info">
+            <ion-card-content>
+              <div class="stat-icon">
+                <ion-icon name="document-text-outline"></ion-icon>
+              </div>
+              <h2>{{ statistics.totalLessons }}</h2>
+              <p>Total Lessons</p>
+            </ion-card-content>
+          </ion-card>
+        </ion-col>
+      </ion-row>
+    </ion-grid>
+
+    <!-- Loading State -->
+    <div *ngIf="isLoading" class="ion-text-center ion-padding">
+      <ion-spinner></ion-spinner>
+      <p>Loading statistics...</p>
+    </div>
+
+    <ion-text color="medium" *ngIf="!isLoading">
       <h2 class="section-title">My Courses</h2>
     </ion-text>
 
@@ -71,7 +136,10 @@
                   <ion-icon name="people-outline"></ion-icon>
                   {{ course.totalStudents || 0 }} students
                 </ion-chip>
-
+                <ion-chip color="secondary">
+                  <ion-icon name="book-outline"></ion-icon>
+                  {{ getLessonCount(course.id!) }} lessons
+                </ion-chip>
                 <ion-chip color="success">
                   <ion-icon name="star-outline"></ion-icon>
                   {{ course.rating || 0 }}
@@ -86,9 +154,15 @@
               </ion-button>
 
               <ion-button fill="clear" color="secondary"
-                [routerLink]="['/manage-lessons', { queryParams: { courseId: course.id, courseTitle: course.title } }]">
+                [routerLink]="['/manage-lessons', course.id]">
                 <ion-icon name="book-outline" slot="start"></ion-icon>
                 Lessons
+              </ion-button>
+
+              <ion-button fill="clear" color="tertiary"
+                (click)="viewEnrollments(course.id!)">
+                <ion-icon name="people-outline" slot="start"></ion-icon>
+                Enrollments
               </ion-button>
 
               <ion-button fill="clear" color="medium"
@@ -164,18 +238,27 @@
     <ion-list *ngIf="!isLoadingProgress && studentProgress.length > 0">
       <ion-item *ngFor="let progress of studentProgress">
         <ion-avatar slot="start">
-          <ion-icon name="person-circle-outline" size="large"></ion-icon>
+          <img [src]="'https://ui-avatars.com/api/?name=' + (progress.studentName || 'Student')" />
         </ion-avatar>
 
         <ion-label>
-          <h3>Student {{ progress.studentId }}</h3>
-          <p>Status: {{ getProgressStatus(progress.overallProgress) }}</p>
+          <h3>{{ progress.studentName || 'Student ' + progress.studentId }}</h3>
+          <p>{{ progress.studentEmail || '' }}</p>
+          <p class="progress-info">
+            Completed: {{ progress.completedLessons?.length || 0 }} lessons
+            • Quizzes: {{ getCompletedQuizzesCount(progress) }}
+          </p>
         </ion-label>
 
-        <ion-progress-bar
-          [value]="progress.overallProgress / 100"
-          [color]="getProgressColor(progress.overallProgress)">
-        </ion-progress-bar>
+        <div slot="end" class="progress-display">
+          <ion-text [color]="getProgressColor(progress.overallProgress)">
+            <strong>{{ progress.overallProgress || 0 }}%</strong>
+          </ion-text>
+          <ion-progress-bar
+            [value]="(progress.overallProgress || 0) / 100"
+            [color]="getProgressColor(progress.overallProgress)">
+          </ion-progress-bar>
+        </div>
       </ion-item>
     </ion-list>
 

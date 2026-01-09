@@ -8,23 +8,118 @@
 </ion-header>
 
 <ion-content [fullscreen]="true" class="ion-padding">
-  <ion-searchbar debounce="500" (ionInput)="onSearchChange($event)" placeholder="Search courses"></ion-searchbar>
+  <!-- Search Bar -->
+  <ion-searchbar 
+    debounce="500" 
+    (ionInput)="onSearchChange($event)" 
+    [(ngModel)]="searchTerm"
+    placeholder="Search courses">
+  </ion-searchbar>
 
-  <div *ngIf="courses.length === 0">
-    <p>No courses found.</p>
+  <!-- Filters -->
+  <ion-segment [(ngModel)]="selectedCategory" (ionChange)="onCategoryChange(selectedCategory)">
+    <ion-segment-button value="all">
+      <ion-label>All</ion-label>
+    </ion-segment-button>
+    <ion-segment-button *ngFor="let cat of categories" [value]="cat">
+      <ion-label>{{ cat }}</ion-label>
+    </ion-segment-button>
+  </ion-segment>
+
+  <ion-segment [(ngModel)]="selectedLevel" (ionChange)="onLevelChange(selectedLevel)" class="ion-margin-top">
+    <ion-segment-button *ngFor="let level of levels" [value]="level">
+      <ion-label>{{ level | titlecase }}</ion-label>
+    </ion-segment-button>
+  </ion-segment>
+
+  <!-- Loading State -->
+  <div *ngIf="isLoading" class="ion-text-center ion-padding">
+    <ion-spinner></ion-spinner>
+    <p>Loading courses...</p>
   </div>
 
-  <ion-list *ngIf="courses.length > 0">
-    <ion-item *ngFor="let course of courses" [routerLink]="['/course-detail', course.id]" detail>
-      <ion-thumbnail slot="start">
-        <img [src]="course.cover" alt="Course Cover">
-      </ion-thumbnail>
-      <ion-label>
-        <h2>{{ course.title }}</h2>
-        <p>{{ course.author }} - {{ course.category }}</p>
-        <p>Rating: {{ course.rating }}</p>
-        <p>Price: ${{ course.price }}</p>
-      </ion-label>
-    </ion-item>
-  </ion-list>
+  <!-- Empty State -->
+  <ion-card *ngIf="!isLoading && filteredCourses.length === 0" class="ion-margin-top">
+    <ion-card-content class="ion-text-center">
+      <ion-icon name="school-outline" size="large" color="medium"></ion-icon>
+      <h3>No courses found</h3>
+      <p>Try adjusting your filters or search terms.</p>
+    </ion-card-content>
+  </ion-card>
+
+  <!-- Courses Grid -->
+  <ion-grid *ngIf="!isLoading && filteredCourses.length > 0">
+    <ion-row>
+      <ion-col
+        size="12"
+        size-md="6"
+        size-lg="4"
+        *ngFor="let course of getPaginatedCourses()"
+      >
+        <ion-card class="course-card">
+          <div class="course-clickable" [routerLink]="['/course', course.id]">
+            <img 
+              [src]="course.coverImage || 'assets/icon/favicon.png'" 
+              [alt]="course.title"
+              class="course-image"
+              (error)="$event.target.src='assets/icon/favicon.png'"
+            />
+            <ion-card-header>
+              <ion-card-title>{{ course.title }}</ion-card-title>
+              <ion-card-subtitle>
+                <p>{{ course.teacherName || 'Unknown Teacher' }}</p>
+                <p>{{ course.category }} • {{ course.level | titlecase }}</p>
+              </ion-card-subtitle>
+            </ion-card-header>
+            <ion-card-content>
+              <p class="course-description">{{ course.description ? (course.description.length > 100 ? course.description.slice(0, 100) + '...' : course.description) : 'No description available' }}</p>
+              <div class="course-meta">
+                <ion-chip>
+                  <ion-icon name="star"></ion-icon>
+                  <ion-label>{{ course.rating || 0 }} / 5</ion-label>
+                </ion-chip>
+                <ion-chip>
+                  <ion-icon name="people"></ion-icon>
+                  <ion-label>{{ course.totalStudents || 0 }} students</ion-label>
+                </ion-chip>
+              </div>
+              <div class="course-price">
+                <h3>{{ course.price === 0 ? 'Free' : '$' + course.price }}</h3>
+              </div>
+            </ion-card-content>
+          </div>
+          
+          <!-- Enroll Button for Students -->
+          <div class="course-actions" *ngIf="isStudent && course.id">
+            <ion-button 
+              expand="block" 
+              color="primary" 
+              [routerLink]="['/course', course.id]"
+              (click)="$event.stopPropagation()">
+              <ion-icon name="person-add-outline" slot="start"></ion-icon>
+              View & Enroll
+            </ion-button>
+          </div>
+          
+          <!-- For non-students, show view button -->
+          <div class="course-actions" *ngIf="!currentUser && course.id">
+            <ion-button 
+              expand="block" 
+              color="medium" 
+              routerLink="/login">
+              <ion-icon name="log-in-outline" slot="start"></ion-icon>
+              Login to Enroll
+            </ion-button>
+          </div>
+        </ion-card>
+      </ion-col>
+    </ion-row>
+  </ion-grid>
+
+  <!-- Load More Button -->
+  <div *ngIf="!isLoading && hasMoreItems" class="ion-text-center ion-margin-top">
+    <ion-button fill="outline" (click)="loadMore()">
+      Load More
+    </ion-button>
+  </div>
 </ion-content>

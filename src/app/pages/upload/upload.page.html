@@ -18,6 +18,31 @@
       </ion-card-header>
 
       <ion-card-content>
+        <!-- Cover Image Upload -->
+        <div class="cover-image-section">
+          <ion-label>
+            <h3>Course Cover Image</h3>
+            <p>Upload a cover image for your course (optional but recommended)</p>
+          </ion-label>
+          
+          <div class="cover-image-preview" *ngIf="coverImageUrl">
+            <img [src]="coverImageUrl" alt="Course cover" />
+            <ion-button fill="clear" color="danger" (click)="removeCoverImage()">
+              <ion-icon name="trash-outline"></ion-icon>
+            </ion-button>
+          </div>
+          
+          <ion-button 
+            expand="block" 
+            fill="outline" 
+            (click)="selectCoverImage()"
+            [disabled]="isUploadingCover">
+            <ion-icon name="image-outline" slot="start"></ion-icon>
+            <span *ngIf="!isUploadingCover">{{ coverImageUrl ? 'Change' : 'Select' }} Cover Image</span>
+            <span *ngIf="isUploadingCover">Uploading...</span>
+          </ion-button>
+        </div>
+
         <ion-item>
           <ion-input label="Title" labelPlacement="floating"
                      formControlName="title"></ion-input>

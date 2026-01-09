@@ -25,6 +25,10 @@ export class UploadPage implements OnInit {
 
   selectedFiles: File[] = [];
   uploadedFiles: UploadedFile[] = [];
+  
+  selectedCoverImage: File | null = null;
+  coverImageUrl: string | null = null;
+  isUploadingCover = false;
 
   isUploading = false;
 
@@ -77,6 +81,83 @@ export class UploadPage implements OnInit {
     };
 
     input.click();
+  }
+
+  /* =====================================================
+     COVER IMAGE SELECTION
+     ===================================================== */
+  selectCoverImage() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+
+    input.onchange = async (event: Event) => {
+      const target = event.target as HTMLInputElement;
+      if (!target.files || target.files.length === 0) return;
+
+      const file = target.files[0];
+      
+      // Validate file size (max 5MB for images)
+      const maxSize = 5 * 1024 * 1024; // 5MB
+      if (file.size > maxSize) {
+        this.showToast('Image is too large (max 5MB)', 'warning');
+        return;
+      }
+
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        this.showToast('Please select an image file', 'warning');
+        return;
+      }
+
+      this.selectedCoverImage = file;
+      
+      // Create preview
+      const reader = new FileReader();
+      reader.onload = (e: any) => {
+        this.coverImageUrl = e.target.result;
+      };
+      reader.readAsDataURL(file);
+
+      // Auto-upload cover image
+      await this.uploadCoverImage();
+    };
+
+    input.click();
+  }
+
+  /* =====================================================
+     UPLOAD COVER IMAGE
+     ===================================================== */
+  async uploadCoverImage() {
+    if (!this.selectedCoverImage) return;
+
+    this.isUploadingCover = true;
+
+    try {
+      const result = await this.uploadService.uploadFile(this.selectedCoverImage, 'courses/cover-images').toPromise();
+      
+      if (result) {
+        this.coverImageUrl = result.url;
+        this.showToast('Cover image uploaded successfully!', 'success');
+      }
+    } catch (error: any) {
+      console.error('Cover image upload error:', error);
+      this.showToast('Failed to upload cover image', 'danger');
+      this.selectedCoverImage = null;
+      this.coverImageUrl = null;
+    } finally {
+      this.isUploadingCover = false;
+    }
+  }
+
+  removeCoverImage() {
+    if (this.coverImageUrl && this.coverImageUrl.startsWith('http')) {
+      // Optionally delete from server
+      // For now, just clear local state
+    }
+    this.selectedCoverImage = null;
+    this.coverImageUrl = null;
   }
 
   removeSelectedFile(index: number) {
@@ -180,7 +261,7 @@ export class UploadPage implements OnInit {
         price: this.uploadForm.value.price,
         category: this.uploadForm.value.category,
         level: this.uploadForm.value.level,
-        coverImage: this.uploadedFiles[0]?.url || '',
+        coverImage: this.coverImageUrl || this.uploadedFiles.find(f => f.type.startsWith('image/'))?.url || '',
         tags: this.uploadedFiles.map(f => f.name),
         files: this.uploadedFiles,
         duration: 0
@@ -201,6 +282,8 @@ export class UploadPage implements OnInit {
         level: 'beginner'
       });
       this.uploadedFiles = [];
+      this.selectedCoverImage = null;
+      this.coverImageUrl = null;
 
       // Rediriger vers teacher dashboard
       this.router.navigate(['/teacher-dashboard']);

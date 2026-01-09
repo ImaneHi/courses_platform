@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
-import { HttpClient, HttpHeaders } from '@angular/common/http';
-import { Observable, of } from 'rxjs';
-import { catchError, map } from 'rxjs/operators';
+import { HttpClient, HttpHeaders, HttpErrorResponse } from '@angular/common/http';
+import { Observable, of, throwError, timer } from 'rxjs';
+import { catchError, map, retryWhen, mergeMap, scan } from 'rxjs/operators';
 import { Quiz, QuizQuestion } from './course.model';
 
 export interface QuizGenerationRequest {
@@ -22,8 +22,8 @@ export interface QuizGenerationResponse {
   providedIn: 'root'
 })
 export class AiQuizService {
-  private readonly API_URL = 'https://api.openai.com/v1/chat/completions';
-  private readonly API_KEY = 'YOUR_OPENAI_API_KEY'; // Replace with actual API key
+  private readonly GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
+  private readonly API_KEY = 'AIzaSyCBrmyWGdwU9RXtiBIeovu_TZyNqiZAKzk'; // Google Gemini API Key
 
   constructor(private http: HttpClient) {}
 
@@ -35,45 +35,101 @@ export class AiQuizService {
     
     const headers = new HttpHeaders({
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${this.API_KEY}`
     });
 
     const body = {
-      model: 'gpt-3.5-turbo',
-      messages: [
-        {
-          role: 'system',
-          content: 'You are an educational assistant that creates high-quality quizzes based on lesson content. Always return valid JSON format.'
-        },
-        {
-          role: 'user',
-          content: prompt
-        }
-      ],
-      temperature: 0.7,
-      max_tokens: 2000
+      contents: [{
+        parts: [{
+          text: prompt
+        }]
+      }],
+      generationConfig: {
+        temperature: 0.7,
+        topK: 1,
+        topP: 0.95,
+        maxOutputTokens: 2048,
+        responseMimeType: "application/json"
+      }
     };
 
-    return this.http.post<any>(this.API_URL, body, { headers }).pipe(
+    return this.http.post<any>(`${this.GEMINI_API_URL}?key=${this.API_KEY}`, body, { headers }).pipe(
+      // Retry logic for rate limiting (429 errors)
+      retryWhen(errors =>
+        errors.pipe(
+          scan((acc: { count: number; error: HttpErrorResponse }, error: HttpErrorResponse) => {
+            return { count: acc.count + 1, error };
+          }, { count: 0, error: null as any }),
+          mergeMap(({ count, error }) => {
+            // Only retry on 429 (Too Many Requests) errors, up to 3 retries
+            if (error.status === 429 && count <= 3) {
+              // Exponential backoff: 2s, 4s, 8s (for retry attempts 1, 2, 3)
+              const delayMs = Math.pow(2, count) * 1000;
+              console.warn(`Rate limited (429). Retrying in ${delayMs}ms... (retry attempt ${count}/3)`);
+              return timer(delayMs);
+            }
+            // For other errors or max retries reached, throw error
+            return throwError(() => error);
+          })
+        )
+      ),
       map(response => {
         try {
-          const quizData = JSON.parse(response.choices[0].message.content);
+          const generatedContent = response.candidates?.[0]?.content?.parts?.[0]?.text;
+          const quizData = JSON.parse(generatedContent || '{}');
+          
           return {
             success: true,
-            quiz: this.formatQuiz(quizData, request.lessonTitle)
+            quiz: {
+              id: `quiz_${Date.now()}`,
+              title: `${request.lessonTitle} Quiz`,
+              questions: quizData.questions || [],
+              passingScore: 70,
+              createdAt: new Date()
+            }
           };
-        } catch (error) {
+        } catch (parseError) {
+          const errorMessage = parseError instanceof Error ? parseError.message : String(parseError);
           return {
             success: false,
-            error: 'Failed to parse AI response'
+            error: 'Failed to parse AI response: ' + errorMessage
           };
         }
       }),
-      catchError(error => {
+      catchError((error: HttpErrorResponse | any) => {
+        let errorMessage = 'Unknown AI service error';
+        
+        if (error instanceof HttpErrorResponse) {
+          // Handle HTTP errors
+          switch (error.status) {
+            case 429:
+              errorMessage = 'API rate limit exceeded. Please wait a moment and try again.';
+              break;
+            case 400:
+              errorMessage = 'Invalid request. Please check your input and try again.';
+              break;
+            case 401:
+              errorMessage = 'API authentication failed. Please check your API key.';
+              break;
+            case 403:
+              errorMessage = 'API access forbidden. Please check your API permissions.';
+              break;
+            case 500:
+            case 502:
+            case 503:
+              errorMessage = 'AI service is temporarily unavailable. Please try again later.';
+              break;
+            default:
+              errorMessage = error.error?.error?.message || error.message || `HTTP ${error.status}: ${error.statusText}`;
+          }
+        } else if (error?.message) {
+          errorMessage = error.message;
+        }
+        
         console.error('AI Quiz Generation Error:', error);
+        
         return of({
           success: false,
-          error: 'Failed to generate quiz. Please try again.'
+          error: errorMessage
         });
       })
     );

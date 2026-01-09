@@ -1,6 +1,6 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterModule } from '@angular/router';
+import { RouterModule, Router } from '@angular/router';
 import { IonicModule } from '@ionic/angular';
 import { AuthService, AppUser } from './services/auth.service';
 import { Observable } from 'rxjs';
@@ -14,7 +14,10 @@ import { Observable } from 'rxjs';
 export class AppComponent {
   user$: Observable<AppUser | null>;
 
-  constructor(public auth: AuthService) {
+  constructor(
+    public auth: AuthService,
+    private router: Router
+  ) {
     this.user$ = this.auth.currentUser$;
   }
 
@@ -26,7 +29,8 @@ export class AppComponent {
     return user?.role === 'teacher';
   }
 
-  logout() {
-    this.auth.logout();
+  async logout() {
+    await this.auth.logout();
+    this.router.navigate(['/login']);
   }
 }

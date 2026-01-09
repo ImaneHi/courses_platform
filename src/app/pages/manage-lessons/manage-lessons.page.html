@@ -35,8 +35,56 @@
           </ion-item>
 
           <ion-item>
-            <ion-label position="floating">Content</ion-label>
-            <ion-textarea formControlName="content" rows="6"></ion-textarea>
+            <ion-label position="floating">Lesson Content</ion-label>
+            <div class="content-options">
+              <!-- File Upload Option -->
+              <div class="upload-section">
+                <ion-button (click)="selectFile()" fill="outline" color="primary">
+                  <ion-icon name="cloud-upload-outline" slot="start"></ion-icon>
+                  Upload {{ lessonForm.value.type === 'video' ? 'Video' : 'PDF' }}
+                </ion-button>
+                <input type="file" 
+                       #fileInput 
+                       [accept]="lessonForm.value.type === 'video' ? 'video/*' : 'application/pdf'"
+                       (change)="onFileSelected($event)"
+                       style="display: none;">
+                
+                <div *ngIf="uploadedFile" class="uploaded-file">
+                  <ion-icon name="document-attach-outline" color="success"></ion-icon>
+                  <span>{{ uploadedFile.name }}</span>
+                  <ion-button (click)="removeFile()" fill="clear" size="small">
+                    <ion-icon name="close-outline"></ion-icon>
+                  </ion-button>
+                </div>
+              </div>
+              
+              <!-- Text Content Option (fallback) -->
+              <div class="text-section" *ngIf="!uploadedFile">
+                <ion-textarea formControlName="content" rows="6" placeholder="Or enter text content directly..."></ion-textarea>
+              </div>
+            </div>
+          </ion-item>
+
+          <!-- AI Quiz Generation -->
+          <ion-item>
+            <ion-label position="floating">Quiz</ion-label>
+            <div class="quiz-section">
+              <ion-button (click)="generateQuizForLesson()" fill="outline" color="secondary">
+                <ion-icon name="sparkles-outline" slot="start"></ion-icon>
+                Generate Quiz with AI
+              </ion-button>
+              
+              <div *ngIf="generatedQuiz" class="generated-quiz">
+                <ion-badge color="success">
+                  <ion-icon name="checkmark-circle-outline"></ion-icon>
+                  Quiz Generated ({{ generatedQuiz.questions.length }} questions)
+                </ion-badge>
+                <ion-button (click)="reviewQuiz()" fill="clear" size="small">
+                  <ion-icon name="eye-outline"></ion-icon>
+                  Review & Edit
+                </ion-button>
+              </div>
+            </div>
           </ion-item>
 
           <ion-item>
@@ -146,3 +194,89 @@
     </div>
   </div>
 </ion-content>
+
+<!-- Quiz Review Modal -->
+<ion-modal [isOpen]="isQuizModalOpen" (willDismiss)="closeQuizModal()">
+  <ng-template>
+    <ion-header>
+      <ion-toolbar>
+        <ion-title>Review & Edit Quiz</ion-title>
+        <ion-buttons slot="end">
+          <ion-button (click)="closeQuizModal()">
+            <ion-icon name="close-outline"></ion-icon>
+          </ion-button>
+        </ion-buttons>
+      </ion-toolbar>
+    </ion-header>
+    <ion-content class="ion-padding">
+      <div *ngIf="!generatedQuiz" class="no-quiz">
+        <h3>No Quiz Generated Yet</h3>
+        <p>Click "Generate Quiz with AI" to create a quiz for this lesson.</p>
+      </div>
+
+      <div *ngIf="generatedQuiz" class="quiz-review">
+        <div class="quiz-header">
+          <h3>Quiz Questions ({{ generatedQuiz.questions.length }})</h3>
+          <div class="quiz-actions">
+            <ion-button (click)="addQuestion()" fill="outline" size="small">
+              <ion-icon name="add-outline" slot="start"></ion-icon>
+              Add Question
+            </ion-button>
+            <ion-button (click)="validateQuiz()" fill="solid" color="success">
+              <ion-icon name="checkmark-outline" slot="start"></ion-icon>
+              Validate Quiz
+            </ion-button>
+          </div>
+        </div>
+
+        <div class="questions-list">
+          <div *ngFor="let question of generatedQuiz.questions; let i = index" class="question-item">
+            <ion-card>
+              <ion-card-header>
+                <ion-card-title>Question {{ i + 1 }}</ion-card-title>
+                <ion-buttons slot="end">
+                  <ion-button (click)="editQuestion(i)" fill="clear" size="small">
+                    <ion-icon name="create-outline"></ion-icon>
+                  </ion-button>
+                  <ion-button (click)="deleteQuestion(i)" fill="clear" size="small" color="danger">
+                    <ion-icon name="trash-outline"></ion-icon>
+                  </ion-button>
+                </ion-buttons>
+              </ion-card-header>
+              <ion-card-content>
+                <ion-item>
+                  <ion-label position="floating">Question</ion-label>
+                  <ion-textarea [(ngModel)]="question.question" rows="3"></ion-textarea>
+                </ion-item>
+
+                <div class="options-list">
+                  <div *ngFor="let option of question.options; let j = index" class="option-item">
+                    <ion-item>
+                      <ion-label position="floating">Option {{ j + 1 }}</ion-label>
+                      <ion-input [(ngModel)]="question.options[j]" type="text"></ion-input>
+                      <ion-checkbox [(ngModel)]="question.options[j]" [checked]="question.correctAnswer === j" (ionChange)="updateCorrectAnswer(j, $event)" slot="end"></ion-checkbox>
+                    </ion-item>
+                  </div>
+                </div>
+
+                <ion-item>
+                  <ion-label position="floating">Explanation</ion-label>
+                  <ion-textarea [(ngModel)]="question.explanation" rows="2"></ion-textarea>
+                </ion-item>
+              </ion-card-content>
+            </ion-card>
+          </div>
+        </div>
+
+        <div *ngIf="validationResult" class="validation-result">
+          <ion-alert>
+            <h2>Quiz Validation</h2>
+            <p [class]="validationResult.isValid ? 'success' : 'error'">
+              {{ validationResult.message }}
+            </p>
+          </ion-alert>
+        </div>
+      </div>
+    </ion-content>
+  </ng-template>
+</ion-modal>

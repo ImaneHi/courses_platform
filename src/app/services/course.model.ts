@@ -115,6 +115,8 @@ export interface Enrollment {
   id?: string;
   studentId: string;
   courseId: string;
-  enrolledAt: Date;
+  teacherId?: string; // Added to allow teachers to query their enrollments
+  enrolledAt: Date | any;
   status: 'active' | 'completed' | 'cancelled';
+  createdAt?: Date | any;
 }

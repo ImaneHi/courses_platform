@@ -1,52 +1,97 @@
-<ion-item *ngFor="let course of enrolledCourses">
+<ion-header [translucent]="true">
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-menu-button></ion-menu-button>
+    </ion-buttons>
+    <ion-title>My Dashboard</ion-title>
+  </ion-toolbar>
+</ion-header>
 
-  <ion-label>
-    <h2>{{ course.title }}</h2>
-    <p>{{ course.category }}</p>
+<ion-content [fullscreen]="true" class="ion-padding">
+  <!-- Welcome Section -->
+  <div *ngIf="currentUser" class="welcome-section ion-margin-bottom">
+    <h2>Welcome, {{ currentUser.firstName }}!</h2>
+    <p>Continue your learning journey</p>
+  </div>
 
-    <!-- ✅ capture sécurisée -->
-    <ng-container *ngIf="course.id as cid">
+  <!-- Loading State -->
+  <div *ngIf="isLoading" class="ion-text-center ion-padding">
+    <ion-spinner></ion-spinner>
+    <p>Loading your courses...</p>
+  </div>
 
-      <div *ngIf="getProgressForCourse(cid)" class="progress-info">
-        <ion-progress-bar
-          [value]="getProgressForCourseSafe(cid).overallProgress / 100"
-          [color]="getProgressColor(getProgressForCourseSafe(cid).overallProgress)">
-        </ion-progress-bar>
-
-        <p>
-          Progress: {{ getProgressForCourseSafe(cid).overallProgress }}%
-        </p>
-      </div>
-
-      <ion-button (click)="viewCourse(cid)" fill="clear">
-        <ion-icon name="book-outline"></ion-icon>
+  <!-- Empty State -->
+  <ion-card *ngIf="!isLoading && enrolledCourses.length === 0" class="empty-card">
+    <ion-card-content class="ion-text-center">
+      <ion-icon name="school-outline" size="large" color="medium"></ion-icon>
+      <h3>No enrolled courses yet</h3>
+      <p>Browse available courses and enroll to get started!</p>
+      <ion-button expand="block" color="primary" routerLink="/courses" class="ion-margin-top">
+        Browse Courses
       </ion-button>
+    </ion-card-content>
+  </ion-card>
 
-      <ng-container *ngFor="let lesson of (course.lessons || [])">
+  <!-- Enrolled Courses -->
+  <ion-list *ngIf="!isLoading && enrolledCourses.length > 0">
+    <ion-item *ngFor="let course of enrolledCourses" class="course-item">
+      <ion-thumbnail slot="start">
+        <img 
+          [src]="course.coverImage || 'assets/icon/favicon.png'" 
+          [alt]="course.title"
+          (error)="$event.target.src='assets/icon/favicon.png'"
+        />
+      </ion-thumbnail>
 
-        <ng-container *ngIf="lesson.quiz?.id as qid">
+      <ion-label>
+        <h2>{{ course.title }}</h2>
+        <p>{{ course.category }} • {{ course.level | titlecase }}</p>
+        <p class="teacher-name">By {{ course.teacherName }}</p>
 
-          <ion-button
-            *ngIf="canTakeQuiz(cid, qid)"
-            (click)="takeQuiz(cid, qid)"
-            color="primary"
-            size="small">
-            Quiz: {{ lesson.title }}
-          </ion-button>
+        <!-- Progress Display -->
+        <ng-container *ngIf="course.id as cid">
+          <ng-container *ngIf="courseProgressMap[cid] as progress; else noProgress">
+            <div class="progress-info">
+              <ion-progress-bar
+                [value]="progress.overallProgress / 100"
+                [color]="getProgressColor(progress.overallProgress)">
+              </ion-progress-bar>
+              <p class="progress-text">
+                Progress: {{ progress.overallProgress }}%
+              </p>
+              <p class="progress-details">
+                {{ progress.completedLessons?.length || 0 }} lessons completed
+              </p>
+            </div>
+          </ng-container>
+          <ng-template #noProgress>
+            <div class="progress-info">
+              <p class="progress-text">Not started yet</p>
+            </div>
+          </ng-template>
 
-          <ion-button
-            *ngIf="isQuizCompleted(cid, qid)"
-            color="success"
-            size="small"
-            disabled>
-            Quiz: {{ lesson.title }} ({{ getQuizScore(cid, qid) }}%)
-          </ion-button>
-
+          <div class="course-actions">
+            <ion-button 
+              (click)="viewCourse(cid)" 
+              fill="solid" 
+              color="primary"
+              size="small">
+              <ion-icon name="book-outline" slot="start"></ion-icon>
+              View Course
+            </ion-button>
+          </div>
         </ng-container>
+      </ion-label>
+    </ion-item>
+  </ion-list>
 
-      </ng-container>
-
-    </ng-container>
-  </ion-label>
-
-</ion-item>
+  <!-- Browse Courses CTA -->
+  <ion-card *ngIf="!isLoading && enrolledCourses.length > 0" class="ion-margin-top">
+    <ion-card-content>
+      <ion-button expand="block" fill="outline" routerLink="/courses">
+        <ion-icon name="add-circle-outline" slot="start"></ion-icon>
+        Browse More Courses
+      </ion-button>
+    </ion-card-content>
+  </ion-card>
+</ion-content>

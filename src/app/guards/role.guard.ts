@@ -17,7 +17,7 @@ export const RoleGuard: CanActivateFn = (
   
   const requiredRole = route.data['role'] as string;
 
-  return authService.userProfile$.pipe(
+  return authService.currentUser$.pipe(
     take(1),
     map(user => {
       if (!user) {

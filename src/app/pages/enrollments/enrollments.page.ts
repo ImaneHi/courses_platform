@@ -1,5 +1,5 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { CommonModule, TitleCasePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { IonicModule } from '@ionic/angular';
 import { RouterModule } from '@angular/router';
@@ -14,7 +14,7 @@ import { CourseService } from '../../services/course.service';
   templateUrl: './enrollments.page.html',
   styleUrls: ['./enrollments.page.scss'],
   standalone: true,
-  imports: [CommonModule, FormsModule, IonicModule, RouterModule]
+  imports: [CommonModule, FormsModule, IonicModule, RouterModule, TitleCasePipe]
 })
 export class EnrollmentsPage implements OnInit, OnDestroy {
   private destroy$ = new Subject<void>();
@@ -35,10 +35,12 @@ export class EnrollmentsPage implements OnInit, OnDestroy {
 
   loadEnrolledCourses() {
     this.isLoading = true;
+    console.log('Loading enrolled courses...');
     this.courseService.getStudentCourses()
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (courses: Course[]) => {
+          console.log('Enrolled courses loaded:', courses.length, courses);
           this.enrolledCourses = courses;
           this.isLoading = false;
         },

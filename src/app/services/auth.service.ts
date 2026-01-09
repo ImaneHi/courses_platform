@@ -17,8 +17,8 @@ import {
   serverTimestamp,
   getDoc
 } from '@angular/fire/firestore';
-import { BehaviorSubject, Observable, of, from } from 'rxjs';
-import { switchMap, map, tap, catchError } from 'rxjs/operators';
+import { BehaviorSubject, Observable, of, from, firstValueFrom, defer } from 'rxjs';
+import { switchMap, map, tap, catchError, take, shareReplay } from 'rxjs/operators';
 
 export type UserRole = 'student' | 'teacher';
 
@@ -48,17 +48,87 @@ export class AuthService {
         this.userProfileSubject.next(null);
         return of(null);
       }
-      return from(this.loadUserProfile(user.uid));
+      // Use defer to ensure lazy evaluation and proper injection context
+      // This creates the observable only when subscribed to
+      const userRef = doc(this.firestore, `users/${user.uid}`);
+      return defer(() => from(getDoc(userRef))).pipe(
+        map((snap) => {
+          const data = snap.data();
+          
+          if (!data) {
+            // Create default profile if none exists
+            const defaultProfile: AppUser = {
+              uid: user.uid,
+              email: user.email,
+              firstName: '',
+              lastName: '',
+              role: 'student' as UserRole,
+              avatar: `https://ui-avatars.com/api/?name=User`,
+              createdAt: new Date(),
+              updatedAt: new Date()
+            };
+            // Create profile in Firestore asynchronously (don't wait)
+            setDoc(userRef, {
+              email: user.email,
+              firstName: '',
+              lastName: '',
+              role: 'student',
+              avatar: defaultProfile.avatar,
+              createdAt: serverTimestamp(),
+              updatedAt: serverTimestamp()
+            }).catch(err => console.error('Error creating default profile:', err));
+            
+            this.userProfileSubject.next(defaultProfile);
+            return defaultProfile;
+          }
+          
+          const profile: AppUser = {
+            uid: user.uid,
+            email: data.email || null,
+            firstName: data.firstName || '',
+            lastName: data.lastName || '',
+            role: data.role || 'student',
+            avatar: data.avatar,
+            createdAt: data.createdAt,
+            updatedAt: data.updatedAt
+          };
+          
+          this.userProfileSubject.next(profile);
+          return profile;
+        }),
+        catchError(error => {
+          console.error('Error loading user profile:', error);
+          // Return a default student profile if loading fails
+          const defaultProfile: AppUser = {
+            uid: user.uid,
+            email: user.email,
+            firstName: '',
+            lastName: '',
+            role: 'student' as UserRole,
+            avatar: `https://ui-avatars.com/api/?name=User`,
+            createdAt: new Date(),
+            updatedAt: new Date()
+          };
+          this.userProfileSubject.next(defaultProfile);
+          return of(defaultProfile);
+        })
+      );
     }),
-    tap(profile => this.userProfileSubject.next(profile))
+    shareReplay(1) // Share the result so multiple subscribers get the same value
   );
 
-  isAuthenticated$ = this.currentUser$.pipe(
+  // Authentication status should be based on Firebase auth state
+  // so missing Firestore profiles don't mark users as unauthenticated.
+  isAuthenticated$ = authState(this.auth).pipe(
     map(user => !!user)
   );
 
   constructor() {
-    this.currentUser$.subscribe();
+    // Subscribe to ensure the observable is active
+    // This helps with initial auth state detection
+    this.currentUser$.subscribe(user => {
+      console.log('AuthService - Current user updated:', user?.email, user?.role);
+    });
   }
 
   // =====================
@@ -101,26 +171,48 @@ export class AuthService {
   }
 
   // =====================
-  // LOAD USER PROFILE (🔥 FIX FINAL)
+  // LOAD USER PROFILE (kept for backward compatibility but not used in currentUser$)
   // =====================
-  private async loadUserProfile(uid: string): Promise<AppUser | null> {
+  private async loadUserProfile(uid: string, email: string | null = null): Promise<AppUser | null> {
     try {
       const ref = doc(this.firestore, `users/${uid}`);
       const snap = await getDoc(ref);
-
-      if (!snap.exists()) return null;
-
       const data = snap.data();
+      
+      if (!data) {
+        const defaultProfile = {
+          email: email,
+          firstName: '',
+          lastName: '',
+          role: 'student' as UserRole,
+          avatar: `https://ui-avatars.com/api/?name=User`,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        };
+
+        await setDoc(ref, defaultProfile);
+
+        return {
+          uid,
+          email: defaultProfile.email || null,
+          firstName: defaultProfile.firstName,
+          lastName: defaultProfile.lastName,
+          role: defaultProfile.role,
+          avatar: defaultProfile.avatar,
+          createdAt: defaultProfile.createdAt,
+          updatedAt: defaultProfile.updatedAt
+        };
+      }
 
       return {
         uid,
-        email: data['email'] || null,
-        firstName: data['firstName'] || '',
-        lastName: data['lastName'] || '',
-        role: data['role'] || 'student',
-        avatar: data['avatar'],
-        createdAt: data['createdAt'],
-        updatedAt: data['updatedAt']
+        email: data.email || null,
+        firstName: data.firstName || '',
+        lastName: data.lastName || '',
+        role: data.role || 'student',
+        avatar: data.avatar,
+        createdAt: data.createdAt,
+        updatedAt: data.updatedAt
       };
     } catch (error) {
       console.error('Error loading user profile:', error);

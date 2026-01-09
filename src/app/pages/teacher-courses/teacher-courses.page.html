@@ -1,0 +1,131 @@
+<ion-header translucent>
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-menu-button></ion-menu-button>
+    </ion-buttons>
+
+    <ion-title>My Courses</ion-title>
+
+    <ion-buttons slot="end">
+      <ion-button color="primary" routerLink="/upload">
+        <ion-icon name="add-circle-outline" slot="start"></ion-icon>
+        New Course
+      </ion-button>
+    </ion-buttons>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content class="ion-padding">
+  <!-- Loading State -->
+  <div *ngIf="isLoading" class="ion-text-center ion-padding">
+    <ion-spinner></ion-spinner>
+    <p>Loading courses...</p>
+  </div>
+
+  <!-- Empty State -->
+  <ion-card *ngIf="!isLoading && courses.length === 0" class="empty-card">
+    <ion-card-content class="ion-text-center">
+      <ion-icon name="school-outline" size="large"></ion-icon>
+      <h3>No courses yet</h3>
+      <p>Create your first course to start teaching.</p>
+      <ion-button expand="block" color="primary" routerLink="/upload">
+        Create Course
+      </ion-button>
+    </ion-card-content>
+  </ion-card>
+
+  <!-- Courses Grid -->
+  <ion-grid *ngIf="!isLoading && courses.length > 0">
+    <ion-row>
+      <ion-col
+        size="12"
+        size-md="6"
+        size-lg="4"
+        *ngFor="let course of courses"
+      >
+        <ion-card class="course-card">
+          <!-- Course Image -->
+          <div class="course-image-container">
+            <img
+              [src]="getCourseImage(course)"
+              [alt]="course.title"
+              class="course-image"
+              (error)="$event.target.src='assets/icon/favicon.png'"
+            />
+          </div>
+
+          <ion-card-header>
+            <ion-card-title>{{ course.title }}</ion-card-title>
+            <ion-card-subtitle>
+              {{ course.category }} • {{ course.level }}
+            </ion-card-subtitle>
+          </ion-card-header>
+
+          <ion-card-content>
+            <p class="course-description">
+              {{ (course.description || 'No description provided.').substring(0, 100) }}
+              {{ course.description && course.description.length > 100 ? '...' : '' }}
+            </p>
+
+            <div class="course-meta">
+              <ion-chip color="primary">
+                <ion-icon name="people-outline"></ion-icon>
+                {{ course.totalStudents || 0 }} students
+              </ion-chip>
+
+              <ion-chip color="success">
+                <ion-icon name="star-outline"></ion-icon>
+                {{ course.rating || 0 }}
+              </ion-chip>
+
+              <ion-chip *ngIf="course.lessons" color="tertiary">
+                <ion-icon name="document-text-outline"></ion-icon>
+                {{ course.lessons.length }} lessons
+              </ion-chip>
+            </div>
+          </ion-card-content>
+
+          <!-- Action Buttons -->
+          <ion-footer class="course-actions">
+            <ion-button 
+              fill="clear" 
+              color="primary" 
+              [routerLink]="['/course', course.id]"
+              size="small">
+              <ion-icon name="eye-outline" slot="start"></ion-icon>
+              View
+            </ion-button>
+
+            <ion-button 
+              fill="clear" 
+              color="secondary"
+              (click)="viewLessons(course.id!, course.title)"
+              size="small">
+              <ion-icon name="book-outline" slot="start"></ion-icon>
+              Lessons
+            </ion-button>
+
+            <ion-button 
+              fill="clear" 
+              color="medium"
+              (click)="viewProgress(course.id!)"
+              size="small">
+              <ion-icon name="analytics-outline" slot="start"></ion-icon>
+              Progress
+            </ion-button>
+
+            <ion-button 
+              fill="clear" 
+              color="tertiary"
+              (click)="editCourse(course.id!)"
+              size="small">
+              <ion-icon name="create-outline" slot="start"></ion-icon>
+              Edit
+            </ion-button>
+          </ion-footer>
+        </ion-card>
+      </ion-col>
+    </ion-row>
+  </ion-grid>
+</ion-content>
+

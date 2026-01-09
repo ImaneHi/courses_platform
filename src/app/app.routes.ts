@@ -17,8 +17,18 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/login/login.page').then(m => m.LoginPage)
   },
   {
+    path: 'register',
+    loadComponent: () => import('./pages/register/register.page').then(m => m.RegisterPage)
+  },
+  {
     path: 'courses',
     loadComponent: () => import('./pages/courses/courses.page').then(m => m.CoursesPage)
+  },
+  {
+    path: 'teacher-courses',
+    canActivate: [AuthGuard, RoleGuard],
+    data: { role: 'teacher' },
+    loadComponent: () => import('./pages/teacher-courses/teacher-courses.page').then(m => m.TeacherCoursesPage)
   },
   {
     path: 'course/:id',
@@ -45,13 +55,19 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/enrollments/enrollments.page').then(m => m.EnrollmentsPage)
   },
   {
+    path: 'teacher-enrollments',
+    canActivate: [AuthGuard, RoleGuard],
+    data: { role: 'teacher' },
+    loadComponent: () => import('./pages/teacher-enrollments/teacher-enrollments.page').then(m => m.TeacherEnrollmentsPage)
+  },
+  {
     path: 'upload',
     canActivate: [AuthGuard, RoleGuard],
     data: { role: 'teacher' },
     loadComponent: () => import('./pages/upload/upload.page').then(m => m.UploadPage)
   },
   {
-    path: 'manage-lessons',
+    path: 'manage-lessons/:courseId',
     canActivate: [AuthGuard, RoleGuard],
     data: { role: 'teacher' },
     loadComponent: () => import('./pages/manage-lessons/manage-lessons.page').then(m => m.ManageLessonsPage)

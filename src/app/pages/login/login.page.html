@@ -4,16 +4,49 @@
   </ion-toolbar>
 </ion-header>
 
-<ion-content>
-  <form [formGroup]="loginForm" (ngSubmit)="login()">
-    <ion-item>
-      <ion-label position="floating">Email</ion-label>
-      <ion-input type="email" formControlName="email"></ion-input>
-    </ion-item>
-    <ion-item>
-      <ion-label position="floating">Password</ion-label>
-      <ion-input type="password" formControlName="password"></ion-input>
-    </ion-item>
-    <ion-button expand="full" type="submit" [disabled]="!loginForm.valid">Login</ion-button>
-  </form>
+<ion-content class="ion-padding">
+  <div class="login-container">
+    <h2>Welcome Back</h2>
+    <p class="subtitle">Sign in to continue learning</p>
+
+    <form [formGroup]="loginForm" (ngSubmit)="login()">
+      <ion-item class="ion-margin-bottom">
+        <ion-label position="floating">Email</ion-label>
+        <ion-input type="email" formControlName="email" required></ion-input>
+        <ion-note slot="error" *ngIf="loginForm.get('email')?.hasError('email') && loginForm.get('email')?.touched">
+          Please enter a valid email
+        </ion-note>
+      </ion-item>
+
+      <ion-item class="ion-margin-bottom">
+        <ion-label position="floating">Password</ion-label>
+        <ion-input type="password" formControlName="password" required></ion-input>
+        <ion-note slot="error" *ngIf="loginForm.get('password')?.hasError('required') && loginForm.get('password')?.touched">
+          Password is required
+        </ion-note>
+      </ion-item>
+
+      <ion-button 
+        expand="block" 
+        type="submit" 
+        [disabled]="!loginForm.valid || isLoading"
+        class="ion-margin-top">
+        <ion-spinner *ngIf="isLoading" name="crescent"></ion-spinner>
+        <span *ngIf="!isLoading">Login</span>
+      </ion-button>
+
+      <div class="ion-text-center ion-margin-top">
+        <ion-button fill="clear" size="small" (click)="resetPassword()">
+          Forgot Password?
+        </ion-button>
+      </div>
+
+      <div class="ion-text-center ion-margin-top">
+        <p>Don't have an account?</p>
+        <ion-button fill="outline" routerLink="/register">
+          Register
+        </ion-button>
+      </div>
+    </form>
+  </div>
 </ion-content>

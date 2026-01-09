@@ -5,6 +5,7 @@ import {
   collectionData,
   doc,
   docData,
+  getDoc,
   addDoc,
   updateDoc,
   deleteDoc,
@@ -17,7 +18,7 @@ import {
 import { Observable, of, combineLatest, firstValueFrom } from 'rxjs';
 import { map, switchMap, catchError } from 'rxjs/operators';
 
-import { Course, CourseFile } from '../services/course.model';
+import { Course, CourseFile, Enrollment } from '../services/course.model';
 import { AuthService, AppUser } from './auth.service';
 
 @Injectable({
@@ -32,11 +33,29 @@ export class CourseService {
   private enrollmentsCol = collection(this.firestore, 'enrollments');
 
   // =========================
-  // GET ALL COURSES
+  // GET ALL COURSES (PUBLISHED ONLY)
   // =========================
   getAllCourses(): Observable<Course[]> {
-    const q = query(this.coursesCol, orderBy('createdAt', 'desc'));
-    return collectionData(q, { idField: 'id' }) as Observable<Course[]>;
+    // Query without orderBy to avoid index requirement
+    // We'll sort in memory instead
+    const q = query(
+      this.coursesCol,
+      where('isPublished', '==', true)
+    );
+    return (collectionData(q, { idField: 'id' }) as Observable<Course[]>).pipe(
+      map(courses => {
+        // Sort by createdAt in descending order (newest first)
+        return courses.sort((a, b) => {
+          const dateA = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : 
+                       (a.createdAt instanceof Date ? a.createdAt.getTime() : 
+                       (typeof a.createdAt === 'string' ? new Date(a.createdAt).getTime() : 0));
+          const dateB = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : 
+                       (b.createdAt instanceof Date ? b.createdAt.getTime() : 
+                       (typeof b.createdAt === 'string' ? new Date(b.createdAt).getTime() : 0));
+          return dateB - dateA; // Descending order
+        });
+      })
+    );
   }
 
   // =========================
@@ -60,13 +79,31 @@ export class CourseService {
           return of([]);
         }
 
+        // Query without orderBy to avoid index requirement
+        // We'll sort in memory instead
         const q = query(
           this.coursesCol,
-          where('teacherId', '==', user.uid),
-          orderBy('createdAt', 'desc')
+          where('teacherId', '==', user.uid)
         );
 
-        return collectionData(q, { idField: 'id' }) as Observable<Course[]>;
+        return (collectionData(q, { idField: 'id' }) as Observable<Course[]>).pipe(
+          map(courses => {
+            // Sort by createdAt in descending order (newest first)
+            return courses.sort((a, b) => {
+              const dateA = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : 
+                           (a.createdAt instanceof Date ? a.createdAt.getTime() : 
+                           (typeof a.createdAt === 'string' ? new Date(a.createdAt).getTime() : 0));
+              const dateB = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : 
+                           (b.createdAt instanceof Date ? b.createdAt.getTime() : 
+                           (typeof b.createdAt === 'string' ? new Date(b.createdAt).getTime() : 0));
+              return dateB - dateA; // Descending order
+            });
+          }),
+          catchError(error => {
+            console.error('Error fetching teacher courses:', error);
+            return of([]);
+          })
+        );
       })
     );
   }
@@ -88,15 +125,35 @@ export class CourseService {
 
         return collectionData(q, { idField: 'id' }).pipe(
           switchMap((enrollments: any[]) => {
-            if (!enrollments.length) return of([]);
+            if (!enrollments || enrollments.length === 0) {
+              console.log('No enrollments found for student:', user.uid);
+              return of([]);
+            }
 
-            const ids: string[] = enrollments.map(e => e.courseId);
+            console.log('Found enrollments:', enrollments.length, enrollments);
+            const ids: string[] = enrollments.map(e => e.courseId).filter(Boolean);
+
+            if (ids.length === 0) {
+              return of([]);
+            }
 
             return combineLatest(
               ids.map(id => this.getCourseById(id))
             ).pipe(
-              map(courses => courses.filter(Boolean) as Course[])
+              map(courses => {
+                const validCourses = courses.filter(Boolean) as Course[];
+                console.log('Loaded courses from enrollments:', validCourses.length);
+                return validCourses;
+              }),
+              catchError(error => {
+                console.error('Error loading courses from enrollments:', error);
+                return of([]);
+              })
             );
+          }),
+          catchError(error => {
+            console.error('Error fetching enrollments:', error);
+            return of([]);
           })
         );
       })
@@ -169,7 +226,7 @@ export class CourseService {
   // =========================
   // ENROLL STUDENT
   // =========================
-  async enroll(courseId: string): Promise<void> {
+  async enroll(courseId: string): Promise<string> {
 
     const user = await firstValueFrom(this.authService.currentUser$);
 
@@ -177,11 +234,61 @@ export class CourseService {
       throw new Error('Only students can enroll');
     }
 
-    await addDoc(this.enrollmentsCol, {
+    // Check if already enrolled
+    const existingEnrollments = await firstValueFrom(
+      collectionData(
+        query(
+          this.enrollmentsCol,
+          where('studentId', '==', user.uid),
+          where('courseId', '==', courseId)
+        ),
+        { idField: 'id' }
+      )
+    );
+
+    if (existingEnrollments.length > 0) {
+      throw new Error('You are already enrolled in this course');
+    }
+
+    // Get course data to include teacherId in enrollment
+    const courseRef = doc(this.firestore, `courses/${courseId}`);
+    const courseSnap = await getDoc(courseRef);
+
+    if (!courseSnap.exists()) {
+      throw new Error('Course not found');
+    }
+
+    const courseData = courseSnap.data() as any;
+    const teacherId = courseData.teacherId || '';
+
+    // Create enrollment document in Firestore with teacherId
+    const enrollmentData = {
       studentId: user.uid,
       courseId,
-      enrolledAt: new Date()
-    });
+      teacherId: teacherId, // Include teacherId so teachers can query enrollments
+      enrolledAt: new Date(),
+      status: 'active' as const,
+      createdAt: new Date()
+    };
+
+    const ref = await addDoc(this.enrollmentsCol, enrollmentData);
+    console.log('Enrollment created with ID:', ref.id);
+
+    // Update course totalStudents count
+    const currentTotal = courseData.totalStudents || 0;
+    try {
+      await updateDoc(courseRef, {
+        totalStudents: currentTotal + 1,
+        updatedAt: new Date()
+      });
+      console.log('Course student count updated to:', currentTotal + 1);
+    } catch (error) {
+      // Firestore rules often prevent students from updating course documents.
+      // Enrollment is already created; don't fail the whole flow for this.
+      console.warn('Could not update course student count (continuing):', error);
+    }
+
+    return ref.id;
   }
 
   // =========================
@@ -195,5 +302,58 @@ export class CourseService {
     );
 
     return collectionData(q, { idField: 'id' }) as Observable<Course[]>;
+  }
+
+  // =========================
+  // GET ENROLLMENTS FOR COURSE
+  // =========================
+  getCourseEnrollments(courseId: string): Observable<Enrollment[]> {
+    const q = query(
+      this.enrollmentsCol,
+      where('courseId', '==', courseId)
+    );
+    return collectionData(q, { idField: 'id' }) as Observable<Enrollment[]>;
+  }
+
+  // =========================
+  // GET ALL ENROLLMENTS FOR TEACHER'S COURSES
+  // =========================
+  getTeacherEnrollments(): Observable<Enrollment[]> {
+    return this.authService.currentUser$.pipe(
+      switchMap((user: AppUser | null) => {
+        if (!user || user.role !== 'teacher') {
+          return of([]);
+        }
+
+        // Query enrollments where teacherId matches
+        const q = query(
+          this.enrollmentsCol,
+          where('teacherId', '==', user.uid)
+        );
+
+        return collectionData(q, { idField: 'id' }) as Observable<Enrollment[]>;
+      })
+    );
+  }
+
+  // =========================
+  // GET ENROLLMENTS FOR A SPECIFIC COURSE
+  // =========================
+  getCourseEnrollmentsForTeacher(courseId: string): Observable<Enrollment[]> {
+    return this.authService.currentUser$.pipe(
+      switchMap((user: AppUser | null) => {
+        if (!user || user.role !== 'teacher') {
+          return of([]);
+        }
+
+        const q = query(
+          this.enrollmentsCol,
+          where('courseId', '==', courseId),
+          where('teacherId', '==', user.uid)
+        );
+
+        return collectionData(q, { idField: 'id' }) as Observable<Enrollment[]>;
+      })
+    );
   }
 }

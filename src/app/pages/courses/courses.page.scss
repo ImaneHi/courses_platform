@@ -1,12 +1,73 @@
-ion-item {
-  --inner-padding-end: 0;
-  --padding-start: 0;
-  margin-bottom: 10px;
-  border-radius: 10px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+.course-card {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.2s, box-shadow 0.2s;
 
-  ion-thumbnail {
-    width: 100px;
-    height: 100px;
+  &:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
   }
+
+  .course-clickable {
+    cursor: pointer;
+    flex: 1;
+  }
+
+  .course-image {
+    width: 100%;
+    height: 180px;
+    object-fit: cover;
+  }
+
+  .course-description {
+    color: var(--ion-color-medium);
+    font-size: 14px;
+    margin: 10px 0;
+  }
+
+  .course-meta {
+    display: flex;
+    gap: 8px;
+    margin: 10px 0;
+    flex-wrap: wrap;
+
+    ion-chip {
+      margin: 0;
+    }
+  }
+
+  .course-price {
+    margin-top: auto;
+    padding-top: 10px;
+    border-top: 1px solid var(--ion-color-light);
+
+    h3 {
+      margin: 0;
+      color: var(--ion-color-primary);
+      font-weight: bold;
+    }
+  }
+
+  .course-actions {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--ion-color-light);
+  }
+}
+
+ion-card-header {
+  padding-bottom: 8px;
+}
+
+ion-card-title {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+ion-card-subtitle {
+  font-size: 14px;
+  color: var(--ion-color-medium);
+  margin-top: 4px;
 }

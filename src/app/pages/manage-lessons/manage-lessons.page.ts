@@ -9,7 +9,7 @@ import { CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
 import { LessonService } from '../../services/lesson.service';
 import { AiQuizService, QuizGenerationRequest } from '../../services/ai-quiz.service';
 import { FileUploadService } from '../../services/file-upload.service';
-import { Lesson, Quiz } from '../../services/course.model';
+import { Lesson, Quiz, QuizQuestion } from '../../services/course.model';
 
 @Component({
   selector: 'app-manage-lessons',
@@ -30,6 +30,15 @@ export class ManageLessonsPage implements OnInit {
   
   lessonForm!: FormGroup;
   
+  // File upload properties
+  uploadedFile: File | null = null;
+  fileUploadUrl: string = '';
+  
+  // Quiz properties
+  generatedQuiz: Quiz | null = null;
+  isQuizModalOpen = false;
+  validationResult: { isValid: boolean; message: string } | null = null;
+  
   constructor(
     private route: ActivatedRoute,
     private router: Router,
@@ -47,8 +56,18 @@ export class ManageLessonsPage implements OnInit {
     this.courseId = this.route.snapshot.paramMap.get('courseId') || '';
     this.courseTitle = this.route.snapshot.queryParamMap.get('courseTitle') || '';
     
+    // Validate that courseId is provided
+    if (!this.courseId) {
+      console.error('No courseId provided to manage-lessons page');
+      // Optionally redirect back to dashboard or show error
+      return;
+    }
+    
     this.initLessonForm();
     this.loadLessons();
+    
+    // Clean up any lessons with empty courseId
+    this.cleanupOrphanedLessons();
   }
 
   // =========================
@@ -58,7 +77,7 @@ export class ManageLessonsPage implements OnInit {
     this.lessonForm = this.fb.group({
       title: ['', Validators.required],
       description: [''],
-      content: ['', Validators.required],
+      content: [''],
       type: ['text', Validators.required],
       duration: [0, [Validators.required, Validators.min(1)]],
       order: [0],
@@ -66,17 +85,62 @@ export class ManageLessonsPage implements OnInit {
       videoUrl: [''],
       documentUrl: ['']
     });
-  }
 
-  loadLessons() {
-    this.lessonService.getLessonsByCourse(this.courseId).subscribe(lessons => {
-      this.lessons = lessons.sort((a, b) => a.order - b.order);
+    // Update validation based on type
+    this.lessonForm.get('type')?.valueChanges.subscribe(type => {
+      const contentControl = this.lessonForm.get('content');
+      const videoUrlControl = this.lessonForm.get('videoUrl');
+      const documentUrlControl = this.lessonForm.get('documentUrl');
+      
+      if (type === 'text') {
+        contentControl?.setValidators([Validators.required]);
+        videoUrlControl?.clearValidators();
+        documentUrlControl?.clearValidators();
+      } else if (type === 'video') {
+        contentControl?.clearValidators();
+        videoUrlControl?.setValidators([Validators.required]);
+        documentUrlControl?.clearValidators();
+      } else if (type === 'document') {
+        contentControl?.clearValidators();
+        videoUrlControl?.clearValidators();
+        documentUrlControl?.setValidators([Validators.required]);
+      }
+      
+      contentControl?.updateValueAndValidity();
+      videoUrlControl?.updateValueAndValidity();
+      documentUrlControl?.updateValueAndValidity();
     });
   }
 
-  // =========================
-  // LESSON MANAGEMENT
-  // =========================
+  loadLessons() {
+    this.lessonService.getLessonsByCourse(this.courseId).subscribe({
+      next: (lessons) => {
+        this.lessons = lessons.sort((a, b) => a.order - b.order);
+      },
+      error: (error) => {
+        console.error('Error loading lessons:', error);
+        this.lessons = [];
+      }
+    });
+  }
+
+  private cleanupOrphanedLessons() {
+    // Find and delete lessons with empty courseId
+    this.lessonService.getLessonsByCourse('').subscribe(lessons => {
+      if (lessons.length > 0) {
+        console.log('Found orphaned lessons:', lessons.length);
+        lessons.forEach(lesson => {
+          if (lesson.id) {
+            this.lessonService.deleteLesson(lesson.id).then(() => {
+              console.log('Deleted orphaned lesson:', lesson.id);
+            }).catch(error => {
+              console.error('Error deleting orphaned lesson:', error);
+            });
+          }
+        });
+      }
+    });
+  }
   startCreatingLesson() {
     this.isCreatingLesson = true;
     this.selectedLesson = null;
@@ -105,6 +169,12 @@ export class ManageLessonsPage implements OnInit {
       return;
     }
 
+    // Validate that courseId is provided
+    if (!this.courseId) {
+      this.showToast('Course ID is missing. Please navigate to this page from a course.', 'danger');
+      return;
+    }
+
     const loading = await this.loadingCtrl.create({
       message: this.selectedLesson ? 'Updating lesson...' : 'Creating lesson...',
       spinner: 'crescent'
@@ -112,11 +182,16 @@ export class ManageLessonsPage implements OnInit {
     await loading.present();
 
     try {
-      const lessonData = {
+      const lessonData: any = {
         ...this.lessonForm.value,
         courseId: this.courseId,
         order: this.selectedLesson ? this.selectedLesson.order : this.lessons.length
       };
+
+      // Include generated quiz if it exists and was validated
+      if (this.generatedQuiz) {
+        lessonData.quiz = this.generatedQuiz;
+      }
 
       if (this.selectedLesson) {
         await this.lessonService.updateLesson(this.selectedLesson.id!, lessonData);
@@ -390,5 +465,264 @@ export class ManageLessonsPage implements OnInit {
       position: 'top'
     });
     toast.present();
+  }
+
+  // =========================
+  // FILE UPLOAD METHODS
+  // =========================
+  selectFile() {
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+    input?.click();
+  }
+
+  async onFileSelected(event: any) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    // Validate file type
+    const lessonType = this.lessonForm.value.type;
+    if (lessonType === 'video' && !file.type.startsWith('video/')) {
+      this.showToast('Please select a video file', 'danger');
+      return;
+    }
+    if (lessonType === 'document' && file.type !== 'application/pdf') {
+      this.showToast('Please select a PDF file', 'danger');
+      return;
+    }
+
+    this.uploadedFile = file;
+    
+    // Upload file to server
+    try {
+      const loading = await this.loadingCtrl.create({
+        message: 'Uploading file...',
+        spinner: 'crescent'
+      });
+      await loading.present();
+
+      const uploadPath = lessonType === 'video' ? 'lessons/videos' : 'lessons/documents';
+      const result = await firstValueFrom(this.fileUploadService.uploadFile(file, uploadPath));
+      
+      this.fileUploadUrl = result.url;
+      
+      // Update form with file URL
+      if (lessonType === 'video') {
+        this.lessonForm.patchValue({ videoUrl: result.url });
+      } else {
+        this.lessonForm.patchValue({ documentUrl: result.url });
+      }
+      
+      this.showToast('File uploaded successfully!', 'success');
+      loading.dismiss();
+    } catch (error) {
+      console.error('File upload error:', error);
+      this.showToast('Failed to upload file', 'danger');
+    }
+  }
+
+  removeFile() {
+    this.uploadedFile = null;
+    this.fileUploadUrl = '';
+    // Clear the file input
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+    if (input) input.value = '';
+    
+    // Clear form URLs
+    const lessonType = this.lessonForm.value.type;
+    if (lessonType === 'video') {
+      this.lessonForm.patchValue({ videoUrl: '' });
+    } else {
+      this.lessonForm.patchValue({ documentUrl: '' });
+    }
+  }
+
+  // =========================
+  // QUIZ METHODS
+  // =========================
+  async generateQuizForLesson() {
+    const lessonTitle = this.lessonForm.value.title;
+    const lessonContent = this.lessonForm.value.content;
+    
+    if (!lessonTitle && !lessonContent) {
+      this.showToast('Please add lesson title or content before generating quiz', 'warning');
+      return;
+    }
+
+    const loading = await this.loadingCtrl.create({
+      message: 'Generating quiz with AI...',
+      spinner: 'crescent'
+    });
+    await loading.present();
+
+    try {
+      const quizRequest: QuizGenerationRequest = {
+        lessonTitle,
+        lessonContent: lessonContent || lessonTitle,
+        difficulty: 'medium',
+        questionCount: 5,
+        questionType: 'multiple-choice'
+      };
+
+      // Try AI generation first
+      const quizResponse = await firstValueFrom(this.aiQuizService.generateQuiz(quizRequest));
+      
+      if (quizResponse.success && quizResponse.quiz) {
+        this.generatedQuiz = quizResponse.quiz;
+        await loading.dismiss();
+        this.showToast('Quiz generated successfully!', 'success');
+        return;
+      }
+
+      // If AI generation failed (e.g., rate limited), fallback to mock quiz
+      if (quizResponse.error && quizResponse.error.includes('rate limit')) {
+        console.warn('AI API rate limited, using mock quiz generation');
+        const mockResponse = await firstValueFrom(this.aiQuizService.generateMockQuiz(quizRequest));
+        
+        if (mockResponse.success && mockResponse.quiz) {
+          this.generatedQuiz = mockResponse.quiz;
+          await loading.dismiss();
+          this.showToast('Quiz generated (using fallback mode due to rate limits)', 'warning');
+          return;
+        }
+      }
+
+      // If we get here, both AI and mock failed
+      await loading.dismiss();
+      this.showToast(quizResponse.error || 'Failed to generate quiz. Please try again later.', 'danger');
+      
+    } catch (error: any) {
+      console.error('Quiz generation error:', error);
+      await loading.dismiss();
+      
+      // Fallback to mock quiz on any error
+      try {
+        const quizRequest: QuizGenerationRequest = {
+          lessonTitle: this.lessonForm.value.title,
+          lessonContent: this.lessonForm.value.content || this.lessonForm.value.title,
+          difficulty: 'medium',
+          questionCount: 5,
+          questionType: 'multiple-choice'
+        };
+        
+        const mockResponse = await firstValueFrom(this.aiQuizService.generateMockQuiz(quizRequest));
+        if (mockResponse.success && mockResponse.quiz) {
+          this.generatedQuiz = mockResponse.quiz;
+          this.showToast('Quiz generated (using fallback mode)', 'warning');
+          return;
+        }
+      } catch (fallbackError) {
+        console.error('Fallback quiz generation also failed:', fallbackError);
+      }
+      
+      this.showToast('Failed to generate quiz. Please try again later or create quiz manually.', 'danger');
+    }
+  }
+
+  reviewQuiz() {
+    this.isQuizModalOpen = true;
+  }
+
+  closeQuizModal() {
+    this.isQuizModalOpen = false;
+    this.validationResult = null;
+  }
+
+  addQuestion() {
+    if (!this.generatedQuiz) {
+      this.generatedQuiz = {
+        id: '',
+        title: 'Lesson Quiz',
+        questions: [],
+        passingScore: 70,
+        createdAt: new Date()
+      };
+    }
+
+    const newQuestion: QuizQuestion = {
+      id: `q_${Date.now()}`,
+      question: '',
+      options: ['', '', '', '', ''],
+      correctAnswer: 0,
+      explanation: '',
+      points: 1
+    };
+
+    this.generatedQuiz.questions.push(newQuestion);
+  }
+
+  editQuestion(index: number) {
+    // Could open inline editing or a separate modal
+    console.log('Edit question:', index);
+  }
+
+  deleteQuestion(index: number) {
+    if (this.generatedQuiz?.questions) {
+      this.generatedQuiz.questions.splice(index, 1);
+    }
+  }
+
+  updateCorrectAnswer(questionIndex: number, event: any) {
+    if (this.generatedQuiz?.questions && this.generatedQuiz.questions[questionIndex]) {
+      // Find which option index this event refers to
+      const optionIndex = Array.from(this.generatedQuiz.questions[questionIndex].options.entries()).findIndex(
+        ([index, option]) => option === event.target.value
+      );
+      
+      if (optionIndex !== -1) {
+        this.generatedQuiz.questions[questionIndex].correctAnswer = optionIndex;
+      }
+    }
+  }
+
+  validateQuiz() {
+    if (!this.generatedQuiz?.questions || this.generatedQuiz.questions.length === 0) {
+      this.validationResult = {
+        isValid: false,
+        message: 'Quiz must have at least one question'
+      };
+      return;
+    }
+
+    let validQuestions = 0;
+    const errors: string[] = [];
+
+    this.generatedQuiz.questions.forEach((question, index) => {
+      // Check if question has text
+      if (!question.question.trim()) {
+        errors.push(`Question ${index + 1} is missing text`);
+        return;
+      }
+
+      // Check if question has at least 2 options
+      const validOptions = question.options.filter(opt => opt.trim());
+      if (validOptions.length < 2) {
+        errors.push(`Question ${index + 1} needs at least 2 options`);
+        return;
+      }
+
+      // Check if correct answer is valid
+      if (question.correctAnswer < 0 || question.correctAnswer >= question.options.length) {
+        errors.push(`Question ${index + 1} must have a valid correct answer`);
+        return;
+      }
+
+      validQuestions++;
+    });
+
+    if (errors.length > 0) {
+      this.validationResult = {
+        isValid: false,
+        message: `Validation errors:\n${errors.join('\n')}`
+      };
+    } else {
+      this.validationResult = {
+        isValid: true,
+        message: `Quiz is valid! ${validQuestions} questions validated successfully.`
+      };
+      
+      // Attach quiz to lesson form
+      this.lessonForm.patchValue({ quiz: this.generatedQuiz });
+      this.showToast('Quiz validated and attached to lesson!', 'success');
+    }
   }
 }
